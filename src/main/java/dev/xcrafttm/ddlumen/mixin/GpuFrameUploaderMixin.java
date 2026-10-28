@@ -6,7 +6,7 @@ import com.dreamdisplays.platform.client.render.GpuFrameUploader;
 import com.dreamdisplays.platform.client.render.GpuTextureHandle;
 //#if MC >= 26.3
 import com.mojang.renderpearl.api.textures.GpuTexture;
-//#else
+//#elif MC >= 1.21.11
 import com.mojang.blaze3d.textures.GpuTexture;
 //#endif
 import dev.xcrafttm.ddlumen.capture.FrameCapture;
@@ -24,15 +24,23 @@ public abstract class GpuFrameUploaderMixin {
     private void ddlumen$captureInterleaved(GpuTextureRef target, ByteBuffer src, FramePixelFormat format,
                                             CallbackInfoReturnable<Boolean> cir) {
         if (!(target instanceof GpuTextureHandle handle)) return;
+        //#if MC >= 1.21.11
         GpuTexture texture = handle.getTexture();
         FrameCapture.captureInterleaved(src, texture.getWidth(0), texture.getHeight(0), format.getBytesPerPixel());
+        //#else
+        FrameCapture.captureInterleaved(src, handle.getWidth(), handle.getHeight(), format.getBytesPerPixel());
+        //#endif
     }
 
     @Inject(method = "uploadPlanar", at = @At("HEAD"), require = 0)
     private void ddlumen$capturePlanar(GpuTextureRef y, GpuTextureRef u, GpuTextureRef v, ByteBuffer src,
                                        CallbackInfoReturnable<Boolean> cir) {
         if (!(y instanceof GpuTextureHandle handle)) return;
+        //#if MC >= 1.21.11
         GpuTexture texture = handle.getTexture();
         FrameCapture.capturePlanar(src, texture.getWidth(0), texture.getHeight(0));
+        //#else
+        FrameCapture.capturePlanar(src, handle.getWidth(), handle.getHeight());
+        //#endif
     }
 }

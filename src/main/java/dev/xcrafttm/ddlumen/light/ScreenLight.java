@@ -3,8 +3,6 @@ package dev.xcrafttm.ddlumen.light;
 import dev.xcrafttm.ddlumen.LumenConfig;
 import dev.xcrafttm.ddlumen.capture.FrameCapture;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.color.block.BlockColors;
-import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 
@@ -168,7 +166,7 @@ public final class ScreenLight {
         LumenConfig cfg = LumenConfig.get();
         ScreenGeometry g = geometry;
         int zx = zonesX, zy = zonesY;
-        var models = Minecraft.getInstance().getModelManager().getBlockStateModelSet();
+        Object models = ModelQuads.models();
         building = CompletableFuture.supplyAsync(
                 () -> SurfaceBuilder.build(snapshot, g, zx, zy, cfg.range, cfg.shadows, cfg.maxFaces, models), worker);
     }
@@ -180,12 +178,9 @@ public final class ScreenLight {
 
     private static void applyTints(LitSurface s, ClientLevel level) {
         if (!s.needsTints()) return;
-        BlockColors colors = Minecraft.getInstance().getBlockColors();
         for (int q = 0; q < s.quads; q++) {
             int layer = s.tintIndex[q];
-            if (layer < 0 || s.tintState[q] == null) continue;
-            BlockTintSource source = colors.getTintSource(s.tintState[q], layer);
-            if (source != null) s.tints[q] = source.colorInWorld(s.tintState[q], level, s.tintPos(q)) & 0xFFFFFF;
+            if (layer >= 0 && s.tintState[q] != null) s.tints[q] = ModelQuads.tint(s.tintState[q], level, s.tintPos(q), layer);
         }
     }
 }

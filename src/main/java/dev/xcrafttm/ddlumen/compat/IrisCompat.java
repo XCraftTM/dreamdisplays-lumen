@@ -47,7 +47,11 @@ public final class IrisCompat {
         }
 
         static boolean reverseZ() {
+            //#if MC >= 26.2
             return IrisApi.getInstance().isReverseZDuringShaders();
+            //#else
+            return false;
+            //#endif
         }
 
         static boolean shadowPass() {

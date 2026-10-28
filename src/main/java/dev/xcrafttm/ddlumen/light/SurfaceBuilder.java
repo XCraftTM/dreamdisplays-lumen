@@ -3,13 +3,7 @@ package dev.xcrafttm.ddlumen.light;
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import net.minecraft.client.model.geom.builders.UVPair;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
-import net.minecraft.client.renderer.block.BlockStateModelSet;
-import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
-import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
@@ -18,7 +12,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Vector3fc;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,7 +22,6 @@ import java.util.List;
  * {@link #snapshot} copies the blocks on the client thread; {@link #build} then runs on a worker thread.
  */
 final class SurfaceBuilder {
-    private static final Direction[] DIRECTIONS = Direction.values();
     /** Bigger regions are not lit (a display can be huge). */
     private static final int MAX_VOLUME = 400_000;
     /** How far the lit faces float above the blocks, so they win the depth test without a depth bias. */
@@ -66,7 +58,7 @@ final class SurfaceBuilder {
     }
 
     static LitSurface build(Snapshot s, ScreenGeometry g, int zonesX, int zonesY, int range, boolean shadows,
-                            int maxFaces, BlockStateModelSet models) {
+                            int maxFaces, Object models) {
         int zones = zonesX * zonesY;
         double[] centers = g.zoneCenters(zonesX, zonesY);
         double zoneArea = g.area() / zones;
@@ -80,7 +72,6 @@ final class SurfaceBuilder {
         List<BlockState> tintState = new ArrayList<>();
 
         RandomSource random = RandomSource.create();
-        List<BlockStateModelPart> parts = new ArrayList<>();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         float[] w = new float[4 * zones];
         double[] corner = new double[12];
@@ -92,53 +83,37 @@ final class SurfaceBuilder {
                     if (state.isAir() || state.getRenderShape() != RenderShape.MODEL) continue;
                     if (!g.inFront(x + 0.5, y + 0.5, z + 0.5)) continue;
                     pos.set(x, y, z);
-                    BlockStateModel model = models.get(state);
-                    random.setSeed(state.getSeed(pos));
-                    parts.clear();
-                    model.collectParts(random, parts);
                     Vec3 offset = state.getOffset(pos);
-
-                    for (BlockStateModelPart part : parts) {
-                        for (int d = 0; d <= DIRECTIONS.length; d++) {
-                            Direction cull = d < DIRECTIONS.length ? DIRECTIONS[d] : null;
-                            List<BakedQuad> quads = part.getQuads(cull);
-                            if (quads.isEmpty()) continue;
-                            if (cull != null) {
-                                BlockState neighbor = s.get(x + cull.getStepX(), y + cull.getStepY(), z + cull.getStepZ());
-                                if (!Block.shouldRenderFace(state, neighbor, cull)) continue;
-                            }
-                            for (BakedQuad quad : quads) {
-                                if (quad.materialInfo().layer() == ChunkSectionLayer.TRANSLUCENT) continue;
-                                for (int v = 0; v < 4; v++) {
-                                    Vector3fc p = quad.position(v);
-                                    corner[v * 3] = x + offset.x + p.x();
-                                    corner[v * 3 + 1] = y + offset.y + p.y();
-                                    corner[v * 3 + 2] = z + offset.z + p.z();
+                    int bx = x, by = y, bz = z;
+                    long packedPos = pos.asLong();
+                    ModelQuads.collect(models, state, pos, random,
+                            cull -> Block.shouldRenderFace(state, s.get(bx + cull.getStepX(), by + cull.getStepY(), bz + cull.getStepZ()), cull),
+                            (quadCorners, quadUvs, tint, facing) -> {
+                                for (int i = 0; i < 12; i += 3) {
+                                    corner[i] = bx + offset.x + quadCorners[i];
+                                    corner[i + 1] = by + offset.y + quadCorners[i + 1];
+                                    corner[i + 2] = bz + offset.z + quadCorners[i + 2];
                                 }
-                                double[] n = normal(corner, quad.direction());
+                                double[] n = normal(corner, facing);
                                 float sum = 0;
                                 for (int v = 0; v < 4; v++) {
                                     sum += cornerWeights(s, g, centers, zones, zoneArea, range, shadows, corner, v, n, w, v * zones);
                                 }
-                                if (sum < MIN_WEIGHT) continue;
+                                if (sum < MIN_WEIGHT) return;
 
                                 for (int v = 0; v < 4; v++) {
                                     positions.add((float) (corner[v * 3] + n[0] * LIFT - s.ox()));
                                     positions.add((float) (corner[v * 3 + 1] + n[1] * LIFT - s.oy()));
                                     positions.add((float) (corner[v * 3 + 2] + n[2] * LIFT - s.oz()));
-                                    long uv = quad.packedUV(v);
-                                    uvs.add(UVPair.unpackU(uv));
-                                    uvs.add(UVPair.unpackV(uv));
+                                    uvs.add(quadUvs[v * 2]);
+                                    uvs.add(quadUvs[v * 2 + 1]);
                                 }
                                 weights.addElements(weights.size(), w, 0, 4 * zones);
                                 importance.add(sum);
-                                int tint = quad.materialInfo().tintIndex();
                                 tintIndex.add(tint);
-                                tintPos.add(tint >= 0 ? pos.asLong() : 0L);
+                                tintPos.add(tint >= 0 ? packedPos : 0L);
                                 tintState.add(tint >= 0 ? state : null);
-                            }
-                        }
-                    }
+                            });
                 }
             }
         }

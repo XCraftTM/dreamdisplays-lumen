@@ -19,12 +19,19 @@ import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.platform.BlendFactor;
 import com.mojang.blaze3d.platform.CompareOp;
 import net.minecraft.client.renderer.BindGroupLayouts;
-//#else
+//#elif MC >= 26.1
 import com.mojang.blaze3d.pipeline.BlendFunction;
 import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.platform.CompareOp;
+import com.mojang.blaze3d.platform.DestFactor;
+import com.mojang.blaze3d.platform.SourceFactor;
+import com.mojang.blaze3d.vertex.VertexFormat;
+//#else
+import com.mojang.blaze3d.pipeline.BlendFunction;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.platform.DepthTestFunction;
 import com.mojang.blaze3d.platform.DestFactor;
 import com.mojang.blaze3d.platform.SourceFactor;
 import com.mojang.blaze3d.vertex.VertexFormat;
@@ -55,7 +62,7 @@ final class Pipelines {
                 .withLocation(id(location))
                 .withColorTargetState(new ColorTargetState(new BlendFunction(BlendFactor.ONE, BlendFactor.ONE, BlendFactor.ZERO, BlendFactor.ONE)))
                 .build();
-        //#else
+        //#elif MC >= 26.1
         return RenderPipeline.builder(RenderPipelines.MATRICES_FOG_SNIPPET)
                 .withLocation(id(location))
                 .withVertexShader(id("core/screen_light"))
@@ -65,6 +72,17 @@ final class Pipelines {
                 .withDepthStencilState(depth(nearerWins))
                 .withColorTargetState(new ColorTargetState(new BlendFunction(SourceFactor.ONE, DestFactor.ONE, SourceFactor.ZERO, DestFactor.ONE)))
                 .build();
+        //#else
+        return RenderPipeline.builder(RenderPipelines.MATRICES_FOG_SNIPPET)
+                .withLocation(id(location))
+                .withVertexShader(id("core/screen_light"))
+                .withFragmentShader(id("core/screen_light"))
+                .withSampler("Sampler0")
+                .withVertexFormat(DefaultVertexFormat.POSITION_TEX_COLOR, VertexFormat.Mode.QUADS)
+                .withDepthTestFunction(nearerWins ? DepthTestFunction.GREATER_DEPTH_TEST : DepthTestFunction.LEQUAL_DEPTH_TEST)
+                .withDepthWrite(false)
+                .withBlend(new BlendFunction(SourceFactor.ONE, DestFactor.ONE, SourceFactor.ZERO, DestFactor.ONE))
+                .build();
         //#endif
     }
 
@@ -72,9 +90,11 @@ final class Pipelines {
      * No depth bias: on the Vulkan backend any bias hid the faces entirely. The faces are lifted off the blocks a
      * little instead (see SurfaceBuilder.LIFT).
      */
+    //#if MC >= 26.1
     private static DepthStencilState depth(boolean nearerWins) {
         return new DepthStencilState(nearerWins ? CompareOp.GREATER_THAN_OR_EQUAL : CompareOp.LESS_THAN_OR_EQUAL, false);
     }
+    //#endif
 
     //#if MC >= 26.2
     private static RenderPipeline.Snippet snippet(DepthStencilState depth) {

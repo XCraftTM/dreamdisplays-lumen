@@ -10,13 +10,22 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+//#if MC >= 26.1
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
+//#else
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+//#endif
 import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+//#if MC >= 26.1
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal;
+//#else
+import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
+import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
+//#endif
 
 /** Dream Displays Lumen: displays light up the room in the colors of their video. */
 public final class DdLumen implements ClientModInitializer {
@@ -26,8 +35,15 @@ public final class DdLumen implements ClientModInitializer {
     public void onInitializeClient() {
         LumenConfig.load();
         ClientTickEvents.END_CLIENT_TICK.register(ScreenLights::tick);
-        LevelRenderEvents.COLLECT_SUBMITS.register(LightRenderer::submit);
+        //#if MC >= 26.1
+        LevelRenderEvents.COLLECT_SUBMITS.register(ctx ->
+                LightRenderer.submit(ctx.submitNodeCollector(), ctx.poseStack(), ctx.levelState().cameraRenderState.pos));
         ClientChunkEvents.CHUNK_LOAD.register((level, chunk) -> ScreenLights.onChunkLoaded(chunk.getPos().x(), chunk.getPos().z()));
+        //#else
+        WorldRenderEvents.AFTER_ENTITIES.register(ctx ->
+                LightRenderer.submit(ctx.commandQueue(), ctx.matrices(), ctx.worldState().cameraRenderState.pos));
+        ClientChunkEvents.CHUNK_LOAD.register((level, chunk) -> ScreenLights.onChunkLoaded(chunk.getPos().x, chunk.getPos().z));
+        //#endif
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ScreenLights.clear());
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
                 literal("ddlumen")

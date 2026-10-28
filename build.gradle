@@ -50,17 +50,39 @@ preprocessSources(['src/testmod/java'], ['**/*.java'], [], 'testmod')
 def shaderEra = at('26.3') ? 'renderpearl' : at('1.21.5') ? 'pipeline' : 'legacy'
 sourceSets.main.resources.srcDir "src/shaders/${shaderEra}"
 
-// LambDynamicLights only ships its API nested inside the mod jar
+// LambDynamicLights ships its API nested inside the mod jar (before 26.x one level deeper, in the Fabric jar of a
+// multi-loader jar)
 configurations { lambdynamiclights { transitive = false } }
 
 def ldlApiDir = layout.buildDirectory.dir('ldl-api')
-def extractLdlApi = tasks.register('extractLdlApi', Copy) {
-    from({ zipTree(configurations.lambdynamiclights.singleFile) }) {
-        include 'META-INF/jars/lambdynamiclights-api-*.jar'
-        eachFile { it.path = it.name }
+def extractLdlApi = tasks.register('extractLdlApi') {
+    inputs.files(configurations.lambdynamiclights)
+    outputs.dir(ldlApiDir)
+    doLast {
+        def out = ldlApiDir.get().asFile
+        project.delete(out)
+        out.mkdirs()
+        def find
+        find = { byte[] jar, int depth ->
+            def nested = []
+            boolean found = false
+            new java.util.zip.ZipInputStream(new ByteArrayInputStream(jar)).withCloseable { zip ->
+                for (def e = zip.nextEntry; e != null; e = zip.nextEntry) {
+                    def name = e.name
+                    if (!name.startsWith('META-INF/jars/') || !name.endsWith('.jar')) continue
+                    def bytes = zip.readAllBytes()
+                    def file = name.substring(name.lastIndexOf('/') + 1)
+                    if (file.startsWith('lambdynamiclights-api-')) {
+                        new File(out, file).bytes = bytes
+                        found = true
+                    }
+                    if (file.startsWith('lambdynamiclights-') && !file.contains('neoforge')) nested << bytes
+                }
+            }
+            return found || (depth < 2 && nested.any { find(it, depth + 1) })
+        }
+        if (!find(configurations.lambdynamiclights.singleFile.bytes, 0)) throw new GradleException('No LambDynamicLights API in the jar')
     }
-    into ldlApiDir
-    includeEmptyDirs = false
 }
 
 dependencies {
@@ -71,7 +93,7 @@ dependencies {
         modImplementation "net.fabricmc.fabric-api:fabric-api:${deps.fabric_api_version}"
         modImplementation "maven.modrinth:dreamdisplays:${deps.dreamdisplays_version}"
         modCompileOnly "maven.modrinth:iris:${deps.iris_version}"
-        modLocalRuntime "maven.modrinth:lambdynamiclights:${deps.lambdynamiclights_version}"
+        // not in the dev client: before 26.x it is a multi-loader jar that only resolves when installed normally
         if (project.shaders.toBoolean()) {
             modLocalRuntime "maven.modrinth:iris:${deps.iris_version}"
             modLocalRuntime "maven.modrinth:sodium:${deps.sodium_version}"
@@ -88,7 +110,9 @@ dependencies {
         }
     }
     lambdynamiclights "maven.modrinth:lambdynamiclights:${deps.lambdynamiclights_version}"
-    compileOnly files(ldlApiDir.map { it.asFileTree.matching { include '*.jar' } }) { builtBy extractLdlApi }
+    // obfuscated versions: the API jar uses intermediary names and has to be remapped like a mod
+    def ldlApi = files(ldlApiDir.map { it.asFileTree.matching { include '*.jar' } }) { builtBy extractLdlApi }
+    if (obfuscated) modCompileOnly ldlApi else compileOnly ldlApi
 }
 
 loom {

@@ -12,7 +12,7 @@ import dev.xcrafttm.ddlumen.compat.IrisCompat;
 import dev.xcrafttm.ddlumen.light.LitSurface;
 import dev.xcrafttm.ddlumen.light.ScreenLight;
 import dev.xcrafttm.ddlumen.light.ScreenLights;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlas;
@@ -48,8 +48,8 @@ public final class LightRenderer {
     private LightRenderer() {
     }
 
-    /** Collect-submits phase of the level render: queues the light of every lit display. */
-    public static void submit(LevelRenderContext context) {
+    /** Collect-submits phase of the level render: queues the light of every lit display (camera-relative pose). */
+    public static void submit(SubmitNodeCollector collector, PoseStack poseStack, Vec3 camera) {
         ScreenLights.frame();
         LumenConfig cfg = LumenConfig.get();
         if (!cfg.enabled || !cfg.coloredLight) return;
@@ -58,8 +58,6 @@ public final class LightRenderer {
         float intensity = shaders ? cfg.intensityWithShaders : cfg.intensity;
 
         lastSubmits = 0;
-        Vec3 camera = context.levelState().cameraRenderState.pos;
-        PoseStack poseStack = context.poseStack();
         for (ScreenLight light : ScreenLights.all()) {
             LitSurface surface = light.surface();
             if (!light.isLit() || surface.quads == 0) continue;
@@ -73,7 +71,7 @@ public final class LightRenderer {
             if (shaders && !IrisCompat.programAssigned()) {
                 PostShaderLight.queue(surface, radiance, poseStack.last().copy());
             } else {
-                context.submitNodeCollector().submitCustomGeometry(poseStack, RENDER_TYPE,
+                collector.submitCustomGeometry(poseStack, RENDER_TYPE,
                         (pose, buffer) -> emit(surface, radiance, shaders, pose, buffer));
             }
             poseStack.popPose();
