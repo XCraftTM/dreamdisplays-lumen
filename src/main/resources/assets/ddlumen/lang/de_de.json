@@ -1,0 +1,7 @@
+{
+  "ddlumen.command.reloaded": "Dream Displays Lumen: Einstellungen neu geladen.",
+  "ddlumen.command.intensity": "Dream Displays Lumen: Lichtstärke %s.",
+  "ddlumen.command.on": "Dream Displays Lumen: an.",
+  "ddlumen.command.off": "Dream Displays Lumen: aus.",
+  "ddlumen.command.status": "Dream Displays Lumen: %s Displays in der Nähe, %s beleuchtete Blockflächen."
+}

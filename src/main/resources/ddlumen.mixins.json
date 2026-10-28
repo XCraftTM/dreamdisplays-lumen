@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.xcrafttm.ddlumen.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ClientLevelMixin",
+    "DisplayFrameUploaderMixin",
+    "GpuFrameUploaderMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

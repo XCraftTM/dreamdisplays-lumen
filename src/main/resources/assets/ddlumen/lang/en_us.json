@@ -1,0 +1,7 @@
+{
+  "ddlumen.command.reloaded": "Dream Displays Lumen: settings reloaded.",
+  "ddlumen.command.intensity": "Dream Displays Lumen: light intensity %s.",
+  "ddlumen.command.on": "Dream Displays Lumen: on.",
+  "ddlumen.command.off": "Dream Displays Lumen: off.",
+  "ddlumen.command.status": "Dream Displays Lumen: %s displays nearby, %s lit block faces."
+}

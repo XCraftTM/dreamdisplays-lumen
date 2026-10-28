@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "ddlumen",
+  "version": "${version}",
+  "name": "Dream Displays Lumen",
+  "description": "Dream Displays screens light up the room in the colors of their video, with and without shaders.",
+  "authors": ["XCraftTM"],
+  "license": "All-Rights-Reserved",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.xcrafttm.ddlumen.DdLumen"],
+    "lambdynlights:initializer": ["dev.xcrafttm.ddlumen.compat.LdlEntrypoint"]
+  },
+  "mixins": ["ddlumen.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*",
+    "dreamdisplays": ">=1.10.6"
+  },
+  "suggests": {
+    "lambdynlights": ">=4.13.0",
+    "iris": "*"
+  }
+}
