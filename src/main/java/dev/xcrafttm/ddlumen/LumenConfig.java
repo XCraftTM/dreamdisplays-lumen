@@ -22,7 +22,7 @@ public final class LumenConfig {
     /** How strong the colored light is (1 = a white picture filling a surface's whole view lights it fully). */
     public float intensity = 1.0f;
     /** How far the light reaches in front of a display, in blocks. */
-    public int range = 16;
+    public int range = 20;
     /** Columns and rows of the color grid sampled from the video (a 4 x 3 grid lights the room per area). */
     public int zonesX = 4;
     public int zonesY = 3;

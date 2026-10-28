@@ -239,9 +239,9 @@ final class SurfaceBuilder {
         return sum;
     }
 
-    /** 1 up to 60 % of the range, then smoothly down to 0 at the range. */
+    /** 1 up to 70 % of the range, then smoothly down to 0 at the range. */
     private static double smoothFade(double distance, int range) {
-        double t = Math.clamp((range - distance) / (range * 0.4), 0, 1);
+        double t = Math.clamp((range - distance) / (range * 0.3), 0, 1);
         return t * t * (3 - 2 * t);
     }
 

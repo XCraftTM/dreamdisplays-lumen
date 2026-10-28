@@ -33,7 +33,7 @@ public final class LightRenderer {
     /** Vertex colors carry light up to this much (alpha scales it), see screen_light.fsh. */
     private static final float HEADROOM = 2f;
     /** Light below this is not drawn; it is subtracted from all light, so nothing jumps at the cut. */
-    private static final float MIN_LIGHT = 1f / 1024f;
+    private static final float MIN_LIGHT = 1f / 16384f;
     private static final float MIN_SHOWN = (float) Math.sqrt(MIN_LIGHT);
     /**
      * No depth bias: on the Vulkan backend any bias hid the faces entirely. The faces are lifted off the blocks a
