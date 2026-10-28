@@ -1,5 +1,7 @@
 package dev.xcrafttm.ddlumen.render;
 
+//#if MC >= 1.21.11
+
 //#if MC >= 26.3
 import com.mojang.renderpearl.api.pipeline.BlendFactor;
 import com.mojang.renderpearl.api.pipeline.BlendFunction;
@@ -125,3 +127,4 @@ final class Pipelines {
         return Identifier.fromNamespaceAndPath("ddlumen", path);
     }
 }
+//#endif

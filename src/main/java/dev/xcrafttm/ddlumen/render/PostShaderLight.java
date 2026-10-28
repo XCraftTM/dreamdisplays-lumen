@@ -1,5 +1,7 @@
 package dev.xcrafttm.ddlumen.render;
 
+//#if MC >= 1.21.11
+
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
@@ -167,3 +169,13 @@ public final class PostShaderLight {
         return reversed ? reversedZ : forwardZ;
     }
 }
+//#else
+/** Before render pipelines the light under shader packs is not drawn yet. */
+public final class PostShaderLight {
+    private PostShaderLight() {
+    }
+
+    public static void draw() {
+    }
+}
+//#endif

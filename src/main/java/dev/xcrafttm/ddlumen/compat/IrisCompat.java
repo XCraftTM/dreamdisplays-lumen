@@ -2,14 +2,16 @@ package dev.xcrafttm.ddlumen.compat;
 
 //#if MC >= 26.3
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
-//#else
+//#elif MC >= 1.21.11
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 //#endif
 import dev.xcrafttm.ddlumen.DdLumen;
 import dev.xcrafttm.ddlumen.LumenConfig;
 import net.fabricmc.loader.api.FabricLoader;
 import net.irisshaders.iris.api.v0.IrisApi;
+//#if MC >= 1.21.11
 import net.irisshaders.iris.api.v0.IrisProgram;
+//#endif
 
 /** Iris, when installed. Only the nested class touches Iris' classes. */
 public final class IrisCompat {
@@ -37,9 +39,11 @@ public final class IrisCompat {
     }
 
     /** Tells Iris which shader-pack program draws [pipeline] (Iris swaps the program out while a pack is active). */
+    //#if MC >= 1.21.11
     public static void assignPipeline(RenderPipeline pipeline) {
         if (LOADED) Iris.assign(pipeline, LumenConfig.get().irisProgram);
     }
+    //#endif
 
     private static final class Iris {
         static boolean shaderPackInUse() {
@@ -58,6 +62,7 @@ public final class IrisCompat {
             return IrisApi.getInstance().isRenderingShadowPass();
         }
 
+        //#if MC >= 1.21.11
         static void assign(RenderPipeline pipeline, String programName) {
             if (programName.equals("NONE")) return;
             IrisProgram program;
@@ -69,5 +74,6 @@ public final class IrisCompat {
             }
             IrisApi.getInstance().assignPipeline(pipeline, program);
         }
+        //#endif
     }
 }

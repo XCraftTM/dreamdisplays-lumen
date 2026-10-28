@@ -1,7 +1,9 @@
 package dev.xcrafttm.ddlumen.light;
 
 import net.minecraft.client.Minecraft;
+//#if MC >= 1.21.5
 import net.minecraft.client.model.geom.builders.UVPair;
+//#endif
 import net.minecraft.client.multiplayer.ClientLevel;
 //#if MC >= 26.1
 import net.minecraft.client.color.block.BlockTintSource;
@@ -10,21 +12,31 @@ import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
-//#else
+//#elif MC >= 1.21.5
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.block.BlockModelShaper;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.block.model.BlockModelPart;
 import net.minecraft.client.renderer.block.model.BlockStateModel;
 import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+//#else
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.block.BlockModelShaper;
+import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.resources.model.BakedModel;
 //#endif
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
+//#if MC >= 1.21.5
 import org.joml.Vector3fc;
+//#endif
 
+//#if MC >= 1.21.5
 import java.util.ArrayList;
+//#endif
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -59,6 +71,7 @@ final class ModelQuads {
     static void collect(Object models, BlockState state, BlockPos pos, RandomSource random, Predicate<Direction> culled,
                         Sink sink) {
         float[] corners = new float[12], uvs = new float[8];
+        //#if MC >= 1.21.5
         random.setSeed(state.getSeed(pos));
         //#if MC >= 26.1
         BlockStateModel model = ((BlockStateModelSet) models).get(state);
@@ -96,6 +109,30 @@ final class ModelQuads {
                 }
             }
         }
+        //#else
+        if (ItemBlockRenderTypes.getChunkRenderType(state) == RenderType.translucent()) return;
+        BakedModel model = ((BlockModelShaper) models).getBlockModel(state);
+        for (int d = 0; d <= DIRECTIONS.length; d++) {
+            Direction cull = d < DIRECTIONS.length ? DIRECTIONS[d] : null;
+            random.setSeed(state.getSeed(pos));
+            List<BakedQuad> quads = model.getQuads(state, cull, random);
+            if (quads.isEmpty() || (cull != null && !culled.test(cull))) continue;
+            for (BakedQuad quad : quads) {
+                // the block vertex format: x, y, z (floats), color, u, v (floats), light, normal: 8 ints a corner
+                int[] data = quad.getVertices();
+                int stride = data.length / 4;
+                for (int v = 0; v < 4; v++) {
+                    int o = v * stride;
+                    corners[v * 3] = Float.intBitsToFloat(data[o]);
+                    corners[v * 3 + 1] = Float.intBitsToFloat(data[o + 1]);
+                    corners[v * 3 + 2] = Float.intBitsToFloat(data[o + 2]);
+                    uvs[v * 2] = Float.intBitsToFloat(data[o + 4]);
+                    uvs[v * 2 + 1] = Float.intBitsToFloat(data[o + 5]);
+                }
+                sink.quad(corners, uvs, quad.getTintIndex(), quad.getDirection());
+            }
+        }
+        //#endif
     }
 
     /** The color a tinted face (grass, leaves, water) has at [pos], 0xRRGGBB. */

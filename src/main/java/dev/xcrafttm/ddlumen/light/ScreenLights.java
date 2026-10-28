@@ -57,8 +57,10 @@ public final class ScreenLights {
         }
         //#if MC >= 26.2
         Vec3 camera = mc.gameRenderer.mainCamera().position();
-        //#else
+        //#elif MC >= 1.21.11
         Vec3 camera = mc.gameRenderer.getMainCamera().position();
+        //#else
+        Vec3 camera = mc.gameRenderer.getMainCamera().getPosition();
         //#endif
         double reach = cfg.maxDistance + cfg.range;
         Set<UUID> seen = new HashSet<>();

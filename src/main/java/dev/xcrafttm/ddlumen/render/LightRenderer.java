@@ -4,7 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 //#if MC >= 26.3
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
-//#else
+//#elif MC >= 1.21.11
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 //#endif
 import dev.xcrafttm.ddlumen.LumenConfig;
@@ -12,9 +12,18 @@ import dev.xcrafttm.ddlumen.compat.IrisCompat;
 import dev.xcrafttm.ddlumen.light.LitSurface;
 import dev.xcrafttm.ddlumen.light.ScreenLight;
 import dev.xcrafttm.ddlumen.light.ScreenLights;
+//#if MC >= 1.21.11
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
+//#else
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderStateShard;
+import net.minecraft.client.renderer.RenderType;
+//#endif
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.world.phys.Vec3;
 
@@ -28,6 +37,8 @@ public final class LightRenderer {
     /** Light below this is not drawn; it is subtracted from all light, so nothing jumps at the cut. */
     private static final float MIN_LIGHT = 1f / 16384f;
     private static final float MIN_SHOWN = (float) Math.sqrt(MIN_LIGHT);
+
+    //#if MC >= 1.21.11
     public static final RenderPipeline PIPELINE = Pipelines.additive("pipeline/screen_light", Pipelines.REVERSED_Z);
 
     private static final RenderType RENDER_TYPE = RenderType.create("ddlumen_screen_light",
@@ -41,6 +52,22 @@ public final class LightRenderer {
     static {
         IrisCompat.assignPipeline(PIPELINE);
     }
+    //#else
+    /**
+     * Before render pipelines: the game's own position-texture-color shader (texture times vertex color), added to
+     * the frame. It has no headroom above the texture's own color, so the light goes into the color alone.
+     */
+    private static final RenderType RENDER_TYPE = RenderType.create("ddlumen_screen_light",
+            DefaultVertexFormat.POSITION_TEX_COLOR, VertexFormat.Mode.QUADS, 1 << 18, false, false,
+            RenderType.CompositeState.builder()
+                    .setShaderState(new RenderStateShard.ShaderStateShard(GameRenderer::getPositionTexColorShader))
+                    .setTextureState(new RenderStateShard.TextureStateShard(TextureAtlas.LOCATION_BLOCKS, false, true))
+                    .setTransparencyState(RenderStateShard.ADDITIVE_TRANSPARENCY)
+                    .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                    .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                    .setCullState(RenderStateShard.CULL)
+                    .createCompositeState(false));
+    //#endif
 
     /** Faces drawn and displays submitted in the last frame (for /ddlumen status and tests). */
     public static volatile int lastFaces, lastSubmits;
@@ -48,24 +75,35 @@ public final class LightRenderer {
     private LightRenderer() {
     }
 
-    /** Collect-submits phase of the level render: queues the light of every lit display (camera-relative pose). */
-    public static void submit(SubmitNodeCollector collector, PoseStack poseStack, Vec3 camera) {
+    private interface LitDraw {
+        void draw(LitSurface surface, float[] radiance, boolean shaders);
+    }
+
+    /** Moves the lights along, then calls [draw] for each lit display with its light at the mode's strength. */
+    private static void eachLit(LitDraw draw) {
         ScreenLights.frame();
         LumenConfig cfg = LumenConfig.get();
+        lastSubmits = 0;
         if (!cfg.enabled || !cfg.coloredLight) return;
         boolean shaders = IrisCompat.isShaderPackInUse();
         if (shaders && (!cfg.coloredLightWithShaders || IrisCompat.isRenderingShadowPass())) return;
         float intensity = shaders ? cfg.intensityWithShaders : cfg.intensity;
 
-        lastSubmits = 0;
         for (ScreenLight light : ScreenLights.all()) {
             LitSurface surface = light.surface();
             if (!light.isLit() || surface.quads == 0) continue;
             float[] zones = light.radiance();
             float[] radiance = new float[zones.length];
             for (int i = 0; i < zones.length; i++) radiance[i] = zones[i] * intensity;
-
             lastSubmits++;
+            draw.draw(surface, radiance, shaders);
+        }
+    }
+
+    //#if MC >= 1.21.11
+    /** Collect-submits phase of the level render: queues the light of every lit display (camera-relative pose). */
+    public static void submit(SubmitNodeCollector collector, PoseStack poseStack, Vec3 camera) {
+        eachLit((surface, radiance, shaders) -> {
             poseStack.pushPose();
             poseStack.translate(surface.originX - camera.x, surface.originY - camera.y, surface.originZ - camera.z);
             if (shaders && !IrisCompat.programAssigned()) {
@@ -75,13 +113,27 @@ public final class LightRenderer {
                         (pose, buffer) -> emit(surface, radiance, shaders, pose, buffer));
             }
             poseStack.popPose();
-        }
+        });
     }
-
+    //#else
     /**
-     * [plainColor]: a shader pack draws the faces with its own program, which reads alpha as transparency (and dithers
-     * it), so the light goes into the color alone, without the alpha headroom.
+     * After the translucent terrain: draws the light of every lit display into [consumers], camera-relative (the
+     * camera's rotation is in the game's model-view matrix at this point).
      */
+    public static void submit(MultiBufferSource consumers, Vec3 camera) {
+        PoseStack poseStack = new PoseStack();
+        eachLit((surface, radiance, shaders) -> {
+            // a shader pack would shade the faces as a surface; there is no pass after the pack here yet
+            if (shaders) return;
+            poseStack.pushPose();
+            poseStack.translate(surface.originX - camera.x, surface.originY - camera.y, surface.originZ - camera.z);
+            emit(surface, radiance, true, poseStack.last(), consumers.getBuffer(RENDER_TYPE));
+            poseStack.popPose();
+        });
+        if (consumers instanceof MultiBufferSource.BufferSource source) source.endBatch(RENDER_TYPE);
+    }
+    //#endif
+
     static void emit(LitSurface s, float[] radiance, boolean plainColor, PoseStack.Pose pose, VertexConsumer buffer) {
         int zones = s.zones;
         if (radiance.length != zones * 3) return;
@@ -120,16 +172,23 @@ public final class LightRenderer {
                     scale = m > 0 ? 1f / (a * HEADROOM) : 0f;
                 }
                 int pi = (q * 4 + v) * 3, ui = (q * 4 + v) * 2;
-                buffer.addVertex(pose, p[pi], p[pi + 1], p[pi + 2])
-                        .setUv(uv[ui], uv[ui + 1])
-                        .setColor(Math.min(1f, r * scale), Math.min(1f, g * scale), Math.min(1f, b * scale), a);
+                vertex(buffer, pose, p[pi], p[pi + 1], p[pi + 2], uv[ui], uv[ui + 1],
+                        Math.min(1f, r * scale), Math.min(1f, g * scale), Math.min(1f, b * scale), a);
             }
         }
         lastFaces = drawn;
     }
 
+    private static void vertex(VertexConsumer buffer, PoseStack.Pose pose, float x, float y, float z, float u, float v,
+                               float r, float g, float b, float a) {
+        //#if MC >= 1.21
+        buffer.addVertex(pose, x, y, z).setUv(u, v).setColor(r, g, b, a);
+        //#else
+        buffer.vertex(pose.pose(), x, y, z).uv(u, v).color(r, g, b, a).endVertex();
+        //#endif
+    }
+
     private static float shown(float light) {
         return Math.max(0f, (float) Math.sqrt(light) - MIN_SHOWN);
     }
-
 }

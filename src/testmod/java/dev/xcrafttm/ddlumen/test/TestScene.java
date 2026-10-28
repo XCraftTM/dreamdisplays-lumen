@@ -28,7 +28,7 @@ public final class TestScene implements ModInitializer {
         // the join moves the player once more after the event: place them again a bit later
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             if (pending != null && ++pendingTicks == 40) {
-                run(server, "tp " + pending.getGameProfile().name() + " 0.5 -60 17.5 180 12");
+                run(server, "tp " + pending.getScoreboardName() + " 0.5 -60 17.5 180 12");
                 LOG.info("Player at {}", pending.position());
                 ServerPlayer player = pending;
                 pending = null;
@@ -77,8 +77,8 @@ public final class TestScene implements ModInitializer {
                 "fill 9 -60 12 9 -55 16 minecraft:white_terracotta",
                 "fill -3 -60 4 3 -60 4 minecraft:grass_block",
                 "time set midnight",
-                "gamemode creative " + player.getGameProfile().name(),
-                "tp " + player.getGameProfile().name() + " 0.5 -60 17.5 180 12",
+                "gamemode creative " + player.getScoreboardName(),
+                "tp " + player.getScoreboardName() + " 0.5 -60 17.5 180 12",
         };
         for (String command : commands) run(server, command);
         pending = player;

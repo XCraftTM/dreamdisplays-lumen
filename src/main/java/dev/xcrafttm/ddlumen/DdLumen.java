@@ -12,8 +12,10 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 //#if MC >= 26.1
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
-//#else
+//#elif MC >= 1.21.11
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+//#else
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 //#endif
 import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
@@ -39,9 +41,12 @@ public final class DdLumen implements ClientModInitializer {
         LevelRenderEvents.COLLECT_SUBMITS.register(ctx ->
                 LightRenderer.submit(ctx.submitNodeCollector(), ctx.poseStack(), ctx.levelState().cameraRenderState.pos));
         ClientChunkEvents.CHUNK_LOAD.register((level, chunk) -> ScreenLights.onChunkLoaded(chunk.getPos().x(), chunk.getPos().z()));
-        //#else
+        //#elif MC >= 1.21.11
         WorldRenderEvents.AFTER_ENTITIES.register(ctx ->
                 LightRenderer.submit(ctx.commandQueue(), ctx.matrices(), ctx.worldState().cameraRenderState.pos));
+        ClientChunkEvents.CHUNK_LOAD.register((level, chunk) -> ScreenLights.onChunkLoaded(chunk.getPos().x, chunk.getPos().z));
+        //#else
+        WorldRenderEvents.AFTER_TRANSLUCENT.register(ctx -> LightRenderer.submit(ctx.consumers(), ctx.camera().getPosition()));
         ClientChunkEvents.CHUNK_LOAD.register((level, chunk) -> ScreenLights.onChunkLoaded(chunk.getPos().x, chunk.getPos().z));
         //#endif
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ScreenLights.clear());

@@ -191,7 +191,11 @@ public final class TestDriver implements ClientModInitializer {
         //#else
         var target = mc.getMainRenderTarget();
         //#endif
+        //#if MC >= 1.21.11
         Screenshot.grab(mc.gameDirectory, prefix + "-" + name + ".png", target, 1,
+        //#else
+        Screenshot.grab(mc.gameDirectory, prefix + "-" + name + ".png", target,
+        //#endif
                 msg -> TestScene.LOG.info("Screenshot {}: {}", name, msg.getString()));
     }
 

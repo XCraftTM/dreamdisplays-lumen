@@ -7,7 +7,11 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
+//#if MC >= 1.21.2
 import net.minecraft.world.level.block.Block;
+//#else
+import net.minecraft.world.level.EmptyBlockGetter;
+//#endif
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
@@ -83,11 +87,11 @@ final class SurfaceBuilder {
                     if (state.isAir() || state.getRenderShape() != RenderShape.MODEL) continue;
                     if (!g.inFront(x + 0.5, y + 0.5, z + 0.5)) continue;
                     pos.set(x, y, z);
-                    Vec3 offset = state.getOffset(pos);
+                    Vec3 offset = offset(state, pos);
                     int bx = x, by = y, bz = z;
                     long packedPos = pos.asLong();
                     ModelQuads.collect(models, state, pos, random,
-                            cull -> Block.shouldRenderFace(state, s.get(bx + cull.getStepX(), by + cull.getStepY(), bz + cull.getStepZ()), cull),
+                            cull -> faceVisible(state, s.get(bx + cull.getStepX(), by + cull.getStepY(), bz + cull.getStepZ()), cull),
                             (quadCorners, quadUvs, tint, facing) -> {
                                 for (int i = 0; i < 12; i += 3) {
                                     corner[i] = bx + offset.x + quadCorners[i];
@@ -155,6 +159,34 @@ final class SurfaceBuilder {
             ts[i] = tintState.get(q);
         }
         return new LitSurface(s.ox(), s.oy(), s.oz(), zones, count, p, uv, wt, ti, tp, ts);
+    }
+
+    /** Whether a face of [state] towards [neighbor] is drawn by the game. */
+    private static boolean faceVisible(BlockState state, BlockState neighbor, Direction direction) {
+        //#if MC >= 1.21.2
+        return Block.shouldRenderFace(state, neighbor, direction);
+        //#else
+        // the game asks the world here; without one, a full opaque neighbor hides the face
+        return !solid(neighbor);
+        //#endif
+    }
+
+    /** A full opaque block: light does not pass it. */
+    private static boolean solid(BlockState state) {
+        //#if MC >= 1.21.2
+        return state.isSolidRender();
+        //#else
+        return state.isSolidRender(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+        //#endif
+    }
+
+    /** The random model offset of flowers, grass and the like. */
+    private static Vec3 offset(BlockState state, BlockPos pos) {
+        //#if MC >= 1.21.2
+        return state.getOffset(pos);
+        //#else
+        return state.getOffset(EmptyBlockGetter.INSTANCE, pos);
+        //#endif
     }
 
     /** The face's outward normal: from its corners, turned to agree with the face direction. */
@@ -245,7 +277,7 @@ final class SurfaceBuilder {
                 z += stepZ;
                 tMaxZ += tDeltaZ;
             }
-            if (s.get(x, y, z).isSolidRender()) return false;
+            if (solid(s.get(x, y, z))) return false;
         }
         return true;
     }
