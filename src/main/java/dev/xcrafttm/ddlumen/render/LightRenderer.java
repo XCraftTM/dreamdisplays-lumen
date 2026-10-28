@@ -31,11 +31,14 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class LightRenderer {
     /** Vertex colors carry light up to this much (alpha scales it), see screen_light.fsh. */
-    private static final float HEADROOM = 4f;
+    private static final float HEADROOM = 2f;
     /** Light below this is not drawn. */
     private static final float MIN_LIGHT = 1f / 512f;
-    /** Pulled toward the camera like the block breaking overlay, so it never fights with the faces below. */
-    private static final DepthStencilState DEPTH = new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false, 1.0f, 10.0f);
+    /**
+     * No depth bias: on the Vulkan backend any bias hid the faces entirely. The faces are lifted off the blocks a
+     * little instead (see SurfaceBuilder.LIFT).
+     */
+    private static final DepthStencilState DEPTH = new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false);
     private static final int FULL_BRIGHT = 0xF000F0;
 
     private static final RenderPipeline.Snippet SNIPPET = RenderPipeline.builder(RenderPipelines.MATRICES_FOG_SNIPPET)
@@ -69,6 +72,9 @@ public final class LightRenderer {
         IrisCompat.assignPipeline(PIPELINE);
     }
 
+    /** Faces drawn and displays submitted in the last frame (for /ddlumen status and tests). */
+    public static volatile int lastFaces, lastSubmits;
+
     private LightRenderer() {
     }
 
@@ -79,6 +85,7 @@ public final class LightRenderer {
         if (!cfg.enabled || !cfg.coloredLight) return;
         if (IrisCompat.isShaderPackInUse() && (!cfg.coloredLightWithShaders || IrisCompat.isRenderingShadowPass())) return;
 
+        lastSubmits = 0;
         Vec3 camera = context.levelState().cameraRenderState.pos;
         PoseStack poseStack = context.poseStack();
         for (ScreenLight light : ScreenLights.all()) {
@@ -88,6 +95,7 @@ public final class LightRenderer {
             float[] radiance = new float[zones.length];
             for (int i = 0; i < zones.length; i++) radiance[i] = zones[i] * cfg.intensity;
 
+            lastSubmits++;
             poseStack.pushPose();
             poseStack.translate(surface.originX - camera.x, surface.originY - camera.y, surface.originZ - camera.z);
             context.submitNodeCollector().submitCustomGeometry(poseStack, RENDER_TYPE,
@@ -101,6 +109,7 @@ public final class LightRenderer {
         if (radiance.length != zones * 3) return;
         float[] p = s.positions, uv = s.uvs, w = s.weights;
         float[] rgb = new float[12];
+        int drawn = 0;
         for (int q = 0; q < s.quads; q++) {
             float max = 0;
             for (int v = 0; v < 4; v++) {
@@ -119,11 +128,14 @@ public final class LightRenderer {
                 max = Math.max(max, Math.max(r, Math.max(g, b)));
             }
             if (max < MIN_LIGHT) continue;
+            drawn++;
 
             int tint = s.tints[q];
             float tr = ((tint >> 16) & 0xFF) / 255f, tg = ((tint >> 8) & 0xFF) / 255f, tb = (tint & 0xFF) / 255f;
             for (int v = 0; v < 4; v++) {
-                float r = rgb[v * 3] * tr, g = rgb[v * 3 + 1] * tg, b = rgb[v * 3 + 2] * tb;
+                // the frame holds gamma-encoded colors: in the dark, adding E of linear light shows as about sqrt(E)
+                float r = (float) Math.sqrt(rgb[v * 3]) * tr, g = (float) Math.sqrt(rgb[v * 3 + 1]) * tg,
+                        b = (float) Math.sqrt(rgb[v * 3 + 2]) * tb;
                 float m = Math.max(r, Math.max(g, b));
                 float a = Math.min(1f, m / HEADROOM);
                 float scale = m > 0 ? 1f / (a * HEADROOM) : 0f;
@@ -134,6 +146,7 @@ public final class LightRenderer {
                         .setLight(FULL_BRIGHT);
             }
         }
+        lastFaces = drawn;
     }
 
     private static Identifier id(String path) {

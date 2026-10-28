@@ -50,6 +50,35 @@ dependencies {
     }
 }
 
+// dev only: a test scene and a driver that takes screenshots (see scripts/autotest.sh)
+sourceSets {
+    testmod {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+
+loom {
+    mods {
+        ddlumen { sourceSet sourceSets.main }
+        ddlumen_test { sourceSet sourceSets.testmod }
+    }
+    runs {
+        autotest {
+            client()
+            name = 'Lumen auto test'
+            source sourceSets.testmod
+            runDir = 'run/autotest'
+            programArgs '--quickPlaySingleplayer', 'lumen-test', '--width', '960', '--height', '540'
+            // the test video is served from 127.0.0.1, which Dream Displays refuses by default
+            vmArgs '-Xmx3G', '-Ddreamdisplays.allowPrivateUrls=true'
+            ['testPrefix': 'prefix', 'testMode': 'mode', 'testVideo': 'video', 'testSeek': 'seek'].each { prop, key ->
+                if (project.hasProperty(prop)) vmArg "-Dddlumen.test.${key}=${project.property(prop)}"
+            }
+        }
+    }
+}
+
 processResources {
     def props = [version: project.version]
     inputs.properties props

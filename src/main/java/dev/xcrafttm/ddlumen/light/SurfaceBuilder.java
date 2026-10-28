@@ -32,6 +32,8 @@ final class SurfaceBuilder {
     private static final Direction[] DIRECTIONS = Direction.values();
     /** Bigger regions are not lit (a display can be huge). */
     private static final int MAX_VOLUME = 400_000;
+    /** How far the lit faces float above the blocks, so they win the depth test without a depth bias. */
+    private static final double LIFT = 0.003;
     /** Corners that get less than this from all zones together are dark. */
     private static final float MIN_WEIGHT = 2e-4f;
 
@@ -121,9 +123,9 @@ final class SurfaceBuilder {
                                 if (sum < MIN_WEIGHT) continue;
 
                                 for (int v = 0; v < 4; v++) {
-                                    positions.add((float) (corner[v * 3] - s.ox()));
-                                    positions.add((float) (corner[v * 3 + 1] - s.oy()));
-                                    positions.add((float) (corner[v * 3 + 2] - s.oz()));
+                                    positions.add((float) (corner[v * 3] + n[0] * LIFT - s.ox()));
+                                    positions.add((float) (corner[v * 3 + 1] + n[1] * LIFT - s.oy()));
+                                    positions.add((float) (corner[v * 3 + 2] + n[2] * LIFT - s.oz()));
                                     long uv = quad.packedUV(v);
                                     uvs.add(UVPair.unpackU(uv));
                                     uvs.add(UVPair.unpackV(uv));

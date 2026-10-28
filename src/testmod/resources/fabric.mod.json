@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "ddlumen_test",
+  "version": "0",
+  "name": "Dream Displays Lumen test scene",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["dev.xcrafttm.ddlumen.test.TestScene"],
+    "client": ["dev.xcrafttm.ddlumen.test.TestDriver"]
+  },
+  "depends": { "ddlumen": "*" }
+}

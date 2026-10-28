@@ -19,8 +19,8 @@ public final class LumenConfig {
     public boolean enabled = true;
     /** Colored light drawn onto the blocks in front of a display. */
     public boolean coloredLight = true;
-    /** How strong the colored light is (1 = a white screen lights a wall right in front of it like full daylight). */
-    public float intensity = 2.0f;
+    /** How strong the colored light is (1 = a white picture filling a surface's whole view lights it fully). */
+    public float intensity = 1.0f;
     /** How far the light reaches in front of a display, in blocks. */
     public int range = 16;
     /** Columns and rows of the color grid sampled from the video (a 4 x 3 grid lights the room per area). */
