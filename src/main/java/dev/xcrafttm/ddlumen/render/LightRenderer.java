@@ -17,11 +17,7 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 //#else
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 //#endif
 import net.minecraft.client.renderer.texture.TextureAtlas;
@@ -57,16 +53,7 @@ public final class LightRenderer {
      * Before render pipelines: the game's own position-texture-color shader (texture times vertex color), added to
      * the frame. It has no headroom above the texture's own color, so the light goes into the color alone.
      */
-    private static final RenderType RENDER_TYPE = RenderType.create("ddlumen_screen_light",
-            DefaultVertexFormat.POSITION_TEX_COLOR, VertexFormat.Mode.QUADS, 1 << 18, false, false,
-            RenderType.CompositeState.builder()
-                    .setShaderState(new RenderStateShard.ShaderStateShard(GameRenderer::getPositionTexColorShader))
-                    .setTextureState(new RenderStateShard.TextureStateShard(TextureAtlas.LOCATION_BLOCKS, false, true))
-                    .setTransparencyState(RenderStateShard.ADDITIVE_TRANSPARENCY)
-                    .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
-                    .setWriteMaskState(RenderStateShard.COLOR_WRITE)
-                    .setCullState(RenderStateShard.CULL)
-                    .createCompositeState(false));
+    private static final RenderType RENDER_TYPE = LegacyRenderType.screenLight();
     //#endif
 
     /** Faces drawn and displays submitted in the last frame (for /ddlumen status and tests). */
@@ -117,11 +104,15 @@ public final class LightRenderer {
     }
     //#else
     /**
-     * After the translucent terrain: draws the light of every lit display into [consumers], camera-relative (the
-     * camera's rotation is in the game's model-view matrix at this point).
+     * After the translucent terrain: draws the light of every lit display into [consumers], camera-relative. From
+     * 1.20.5 the camera's rotation is in the game's model-view matrix; before, it is in the level's [poseStack].
      */
-    public static void submit(MultiBufferSource consumers, Vec3 camera) {
+    public static void submit(MultiBufferSource consumers, PoseStack levelPoseStack, Vec3 camera) {
+        //#if MC >= 1.20.5
         PoseStack poseStack = new PoseStack();
+        //#else
+        PoseStack poseStack = levelPoseStack;
+        //#endif
         eachLit((surface, radiance, shaders) -> {
             // a shader pack would shade the faces as a surface; there is no pass after the pack here yet
             if (shaders) return;

@@ -46,7 +46,8 @@ public final class DdLumen implements ClientModInitializer {
                 LightRenderer.submit(ctx.commandQueue(), ctx.matrices(), ctx.worldState().cameraRenderState.pos));
         ClientChunkEvents.CHUNK_LOAD.register((level, chunk) -> ScreenLights.onChunkLoaded(chunk.getPos().x, chunk.getPos().z));
         //#else
-        WorldRenderEvents.AFTER_TRANSLUCENT.register(ctx -> LightRenderer.submit(ctx.consumers(), ctx.camera().getPosition()));
+        WorldRenderEvents.AFTER_TRANSLUCENT.register(ctx ->
+                LightRenderer.submit(ctx.consumers(), ctx.matrixStack(), ctx.camera().getPosition()));
         ClientChunkEvents.CHUNK_LOAD.register((level, chunk) -> ScreenLights.onChunkLoaded(chunk.getPos().x, chunk.getPos().z));
         //#endif
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ScreenLights.clear());

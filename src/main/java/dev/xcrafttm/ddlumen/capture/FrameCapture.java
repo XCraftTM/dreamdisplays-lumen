@@ -1,5 +1,6 @@
 package dev.xcrafttm.ddlumen.capture;
 
+import dev.xcrafttm.ddlumen.Clamp;
 import dev.xcrafttm.ddlumen.LumenConfig;
 
 import java.nio.ByteBuffer;
@@ -130,7 +131,7 @@ public final class FrameCapture {
     }
 
     private static int toByte(float c) {
-        return Math.clamp((int) (c * 255f + 0.5f), 0, 255);
+        return Clamp.of((int) (c * 255f + 0.5f), 0, 255);
     }
 
     /** Linear RGB per zone (row-major, top row first), captured at [nanoTime]. */

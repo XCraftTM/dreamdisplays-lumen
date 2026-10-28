@@ -1,5 +1,6 @@
 package dev.xcrafttm.ddlumen;
 
+import dev.xcrafttm.ddlumen.Clamp;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.fabricmc.loader.api.FabricLoader;
@@ -80,7 +81,7 @@ public final class LumenConfig {
 
     /** Sets the display's light strength; written to disk on the next client tick. */
     public void setDisplayLight(UUID display, float value) {
-        value = Math.clamp(value, 0f, 2f);
+        value = Clamp.of(value, 0f, 2f);
         if (Math.abs(value - 1f) < 0.001f) displayLight.remove(display.toString());
         else displayLight.put(display.toString(), value);
         dirty = true;
@@ -122,22 +123,22 @@ public final class LumenConfig {
     private LumenConfig sanitized() {
         intensity = clamp(intensity, 0f, 16f);
         intensityWithShaders = clamp(intensityWithShaders, 0f, 16f);
-        range = Math.clamp(range, 2, 48);
-        zonesX = Math.clamp(zonesX, 1, 8);
-        zonesY = Math.clamp(zonesY, 1, 8);
-        smoothingMs = Math.clamp(smoothingMs, 0, 2000);
-        maxDistance = Math.clamp(maxDistance, 8, 512);
-        maxFaces = Math.clamp(maxFaces, 1000, 400000);
+        range = Clamp.of(range, 2, 48);
+        zonesX = Clamp.of(zonesX, 1, 8);
+        zonesY = Clamp.of(zonesY, 1, 8);
+        smoothingMs = Clamp.of(smoothingMs, 0, 2000);
+        maxDistance = Clamp.of(maxDistance, 8, 512);
+        maxFaces = Clamp.of(maxFaces, 1000, 400000);
         blockLightStrength = clamp(blockLightStrength, 0f, 100f);
-        blockLightMax = Math.clamp(blockLightMax, 0, 15);
+        blockLightMax = Clamp.of(blockLightMax, 0, 15);
         if (irisProgram == null) irisProgram = "NONE";
         if (displayLight == null) displayLight = new HashMap<>();
-        displayLight.replaceAll((id, v) -> v == null || v.isNaN() ? 1f : Math.clamp(v, 0f, 2f));
+        displayLight.replaceAll((id, v) -> v == null || v.isNaN() ? 1f : Clamp.of(v, 0f, 2f));
         if (!"always".equals(blockLight) && !"off".equals(blockLight)) blockLight = "shaders";
         return this;
     }
 
     private static float clamp(float v, float min, float max) {
-        return Float.isNaN(v) ? min : Math.clamp(v, min, max);
+        return Float.isNaN(v) ? min : Clamp.of(v, min, max);
     }
 }

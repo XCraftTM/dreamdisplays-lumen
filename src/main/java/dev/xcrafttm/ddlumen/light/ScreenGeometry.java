@@ -1,5 +1,6 @@
 package dev.xcrafttm.ddlumen.light;
 
+import dev.xcrafttm.ddlumen.Clamp;
 import com.dreamdisplays.api.display.model.property.DisplayFacing;
 import net.minecraft.core.BlockPos;
 
@@ -82,8 +83,8 @@ public record ScreenGeometry(
     /** Distance from the point to the nearest point of the picture. */
     public double distanceToPicture(double x, double y, double z) {
         double dx = x - cx, dy = y - cy, dz = z - cz;
-        double s = Math.clamp(dx * ux + dy * uy + dz * uz, -width / 2.0, width / 2.0);
-        double t = Math.clamp(dx * vx + dy * vy + dz * vz, -height / 2.0, height / 2.0);
+        double s = Clamp.of(dx * ux + dy * uy + dz * uz, -width / 2.0, width / 2.0);
+        double t = Clamp.of(dx * vx + dy * vy + dz * vz, -height / 2.0, height / 2.0);
         double ex = dx - ux * s - vx * t, ey = dy - uy * s - vy * t, ez = dz - uz * s - vz * t;
         return Math.sqrt(ex * ex + ey * ey + ez * ez);
     }

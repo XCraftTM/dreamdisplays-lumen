@@ -1,5 +1,6 @@
 package dev.xcrafttm.ddlumen.light;
 
+import dev.xcrafttm.ddlumen.Clamp;
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
@@ -248,7 +249,7 @@ final class SurfaceBuilder {
 
     /** 1 up to 70 % of the range, then smoothly down to 0 at the range. */
     private static double smoothFade(double distance, int range) {
-        double t = Math.clamp((range - distance) / (range * 0.3), 0, 1);
+        double t = Clamp.of((range - distance) / (range * 0.3), 0, 1);
         return t * t * (3 - 2 * t);
     }
 
