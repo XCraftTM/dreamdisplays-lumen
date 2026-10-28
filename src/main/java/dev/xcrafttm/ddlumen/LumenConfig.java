@@ -24,7 +24,7 @@ public final class LumenConfig {
     /** Colored light drawn onto the blocks in front of a display. */
     public boolean coloredLight = true;
     /** How strong the colored light is (1 = a white picture filling a surface's whole view lights it fully). */
-    public float intensity = 1.0f;
+    public float intensity = 4.0f;
     /** How far the light reaches in front of a display, in blocks. */
     public int range = 20;
     /** Columns and rows of the color grid sampled from the video (a 4 x 3 grid lights the room per area). */

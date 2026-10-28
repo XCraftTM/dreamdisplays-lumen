@@ -40,7 +40,7 @@ rows. It is stored per display and only for you, like volume and brightness (`di
 |---|---|---|
 | `enabled` | `true` | master switch (`/ddlumen toggle`) |
 | `coloredLight` | `true` | the colored light on surfaces |
-| `intensity` | `1.0` | strength of the colored light (`/ddlumen intensity <0–16>` sets the one of the mode in use) |
+| `intensity` | `4.0` | strength of the colored light (`/ddlumen intensity <0–16>` sets the one of the mode in use) |
 | `range` | `20` | how far in front of a display the light reaches, in blocks |
 | `zonesX`, `zonesY` | `4`, `3` | color grid taken from the picture |
 | `smoothingMs` | `90` | how fast the light follows the video (higher is calmer) |

@@ -95,7 +95,9 @@ public final class TestDriver implements ClientModInitializer {
             return;
         }
         if (phase == null || done.contains(phase)) return;
-        if (onShotAt == 0 && now - phaseSince > STABLE_MS) {
+        // the lit surfaces are built a moment after the display appears: only shoot once light is drawn
+        boolean drawing = dev.xcrafttm.ddlumen.render.LightRenderer.lastFaces > 0 || phase == Phase.BLACK;
+        if (onShotAt == 0 && now - phaseSince > STABLE_MS && drawing) {
             shot(mc, phase.name().toLowerCase(Locale.ROOT) + "-on");
             TestScene.LOG.info("{}: zones {}", phase, describe(FrameCapture.latest(light.id)));
             onShotAt = now;

@@ -35,6 +35,7 @@ narrator:0
 tutorialStep:none
 joinedFirstServer:true
 skipMultiplayerWarning:true
+lang:${GAME_LANG:-en_us}
 OPT
 
 if [ "$SHADERS" = true ]; then
