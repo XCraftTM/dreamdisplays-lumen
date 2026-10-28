@@ -17,7 +17,7 @@ public final class LdlCompat {
     public static void update(ScreenLight light) {
         LdlBridge b = bridge;
         if (b == null) return;
-        if (LumenConfig.get().enabled && LumenConfig.get().blockLight) b.track(light);
+        if (LumenConfig.get().blockLightActive(IrisCompat.isShaderPackInUse())) b.track(light);
         else b.untrack(light);
     }
 

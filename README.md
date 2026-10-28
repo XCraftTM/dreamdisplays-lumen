@@ -9,9 +9,11 @@ the room in the colors of its video, like a real screen or a cinema canvas. It w
   between the display and a surface cast shadows. A white picture right in front of a wall lights it fully.
 - **Without shaders:** the lit block faces are drawn a second time with their own texture times the incoming light,
   added on top. Surfaces keep their texture and take on the video's colors.
-- **With shaders (Iris):** with [LambDynamicLights](https://modrinth.com/mod/lambdynamiclights) installed, the
-  display raises the block light in front of it. Every shader pack reads that light, and entities get it too. The
-  colored light is also drawn while a pack is active, through an Iris program you can choose (`irisProgram`).
+- **With shaders (Iris):** shader packs render deferred, so whatever is drawn into their buffers counts as surface
+  color and their lighting darkens it again. The colored light is therefore added onto the finished picture right
+  after the pack's final pass, depth-tested against the scene. With
+  [LambDynamicLights](https://modrinth.com/mod/lambdynamiclights) installed, the display also raises the block light
+  in front of it while a pack is active: the pack's own lighting brightens, and entities get it too.
 
 ## Requirements
 
@@ -34,18 +36,19 @@ The mod is client-only: servers only need Dream Displays itself (plugin or serve
 |---|---|---|
 | `enabled` | `true` | master switch (`/ddlumen toggle`) |
 | `coloredLight` | `true` | the colored light on surfaces |
-| `intensity` | `1.0` | strength of the colored light (`/ddlumen intensity <0–16>`) |
+| `intensity` | `1.0` | strength of the colored light (`/ddlumen intensity <0–16>` sets the one of the mode in use) |
 | `range` | `16` | how far in front of a display the light reaches, in blocks |
 | `zonesX`, `zonesY` | `4`, `3` | color grid taken from the picture |
 | `smoothingMs` | `90` | how fast the light follows the video (higher is calmer) |
 | `shadows` | `true` | blocks cast shadows |
 | `maxDistance` | `96` | displays farther from the camera give no light |
 | `maxFaces` | `40000` | most lit block faces per display (the brightest are kept) |
-| `blockLight` | `true` | block light through LambDynamicLights |
+| `blockLight` | `shaders` | block light through LambDynamicLights: `shaders` (only while a shader pack is active), `always` or `off`. Vanilla block light is warm-tinted and pulls the colors toward orange, so it is off without shaders by default |
 | `blockLightStrength` | `5.0` | how bright the block light gets |
 | `blockLightMax` | `13` | highest block light level |
 | `coloredLightWithShaders` | `true` | colored light while a shader pack is active |
-| `irisProgram` | `BEACON_BEAM` | Iris program for the colored light under shaders |
+| `intensityWithShaders` | `1.5` | strength of the colored light while a shader pack is active |
+| `irisProgram` | `NONE` | `NONE` draws the light after the pack's final pass (recommended). An Iris program name (`TEXTURED`, ...) draws it inside the pack instead, where the pack shades it like a surface |
 
 `/ddlumen status` shows the displays nearby and their lit block faces.
 
@@ -58,9 +61,12 @@ The mod is client-only: servers only need Dream Displays itself (plugin or serve
 3. When a display appears or blocks near it change, a worker thread collects the block faces in front of it from
    the block models and stores, for each corner and zone, how much light arrives:
    `area · cos(emitter) · cos(receiver) / (π · distance²)`, zero when a full block is in the way.
-4. Each frame the corner colors are the weighted sum of the smoothed zone colors. The faces are drawn with an
-   additive pipeline over the block atlas, slightly in front of the terrain (like the block breaking overlay), and
-   with Minecraft's improved transparency (OIT) as an additive OIT surface.
+4. Each frame the corner colors are the weighted sum of the smoothed zone colors, shown as about `sqrt(E)` (the
+   frame holds gamma-encoded colors). The faces are drawn with an additive pipeline over the block atlas, lifted
+   0.003 blocks off the terrain (a depth bias hid them on the Vulkan backend), and with Minecraft's improved
+   transparency (OIT) as an additive OIT surface. Toward the end of the range the light fades out smoothly.
+5. With a shader pack the same faces are drawn in a render pass of their own on the finished picture, right after
+   Iris' final pass (`IrisRenderingPipeline.finalizeLevelRendering`).
 
 ## Building
 
@@ -72,4 +78,6 @@ The mod is client-only: servers only need Dream Displays itself (plugin or serve
 
 `scripts/autotest.sh [shaders]` runs a test scene headless (Xvfb, Mesa): a dark room with an 8 × 4 display playing
 a test video (red | blue, green, white, black) and saves screenshots with and without the light to
-`run/autotest/screenshots`. It needs a flat 26.3 world and the video (see the variables at the top of the script).
+`run/autotest/screenshots`. It needs a flat 26.3 world, the video and (for `shaders`) a shader pack zip; see the
+variables at the top of the script. `VIDEO_URL=... SEEK=<ms>` plays any video instead and takes six pairs of shots.
+Without a GPU Minecraft falls back to Vulkan (lavapipe); with `shaders` SDL is told to use EGL, which gives OpenGL.

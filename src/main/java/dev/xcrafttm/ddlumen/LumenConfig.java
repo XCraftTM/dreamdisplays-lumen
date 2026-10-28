@@ -35,17 +35,35 @@ public final class LumenConfig {
     /** Upper limit of lit block faces per display. */
     public int maxFaces = 40000;
 
-    /** Raises the block light level through LambDynamicLights (if installed): makes shader packs and entities brighter. */
-    public boolean blockLight = true;
+    /**
+     * Raises the block light level through LambDynamicLights (if installed), which shader packs and entity lighting
+     * read: "shaders" only while a shader pack is active, "always", or "off". Without shaders the colored light already
+     * lights the room, and vanilla's warm block light tint would pull its colors toward orange.
+     */
+    public String blockLight = "shaders";
     /** How bright the block light gets. */
     public float blockLightStrength = 5.0f;
     /** Highest block light level a display gives. */
     public int blockLightMax = 13;
 
-    /** Colored light while a shader pack is active (the pack decides how it is shaded). */
+    /**
+     * Colored light while a shader pack is active. Packs render deferred: what is drawn before their lighting counts
+     * as surface color, so the light is drawn after their final pass instead (see IrisFinalPassMixin).
+     */
     public boolean coloredLightWithShaders = true;
+    /** Strength of the colored light while a shader pack is active. */
+    public float intensityWithShaders = 1.5f;
     /** Iris program the colored light is drawn with while a shader pack is active. */
-    public String irisProgram = "BEACON_BEAM";
+    public String irisProgram = "NONE";
+
+    /** Whether the block light is raised right now. */
+    public boolean blockLightActive(boolean shaderPackInUse) {
+        return enabled && switch (blockLight) {
+            case "always" -> true;
+            case "off" -> false;
+            default -> shaderPackInUse;
+        };
+    }
 
     public static LumenConfig get() {
         return current;
@@ -75,6 +93,7 @@ public final class LumenConfig {
 
     private LumenConfig sanitized() {
         intensity = clamp(intensity, 0f, 16f);
+        intensityWithShaders = clamp(intensityWithShaders, 0f, 16f);
         range = Math.clamp(range, 2, 48);
         zonesX = Math.clamp(zonesX, 1, 8);
         zonesY = Math.clamp(zonesY, 1, 8);
@@ -83,7 +102,8 @@ public final class LumenConfig {
         maxFaces = Math.clamp(maxFaces, 1000, 400000);
         blockLightStrength = clamp(blockLightStrength, 0f, 100f);
         blockLightMax = Math.clamp(blockLightMax, 0, 15);
-        if (irisProgram == null) irisProgram = "BEACON_BEAM";
+        if (irisProgram == null) irisProgram = "NONE";
+        if (!"always".equals(blockLight) && !"off".equals(blockLight)) blockLight = "shaders";
         return this;
     }
 

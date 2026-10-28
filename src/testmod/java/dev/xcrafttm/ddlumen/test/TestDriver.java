@@ -75,6 +75,7 @@ public final class TestDriver implements ClientModInitializer {
             return;
         }
 
+        if (mc.gui.screen() != null) return;
         Phase phase = null;
         ScreenLight light = ScreenLights.all().stream().findFirst().orElse(null);
         if (light != null) {
@@ -107,6 +108,7 @@ public final class TestDriver implements ClientModInitializer {
 
     /** Waits for playback, seeks once, then takes a shot with and one without the light every few seconds. */
     private void videoTick(Minecraft mc, long now) {
+        if (mc.gui.screen() != null) return;
         Display display = null;
         for (Display d : DreamDisplays.getDisplays()) display = d;
         if (display == null || !display.isPlaying()) return;

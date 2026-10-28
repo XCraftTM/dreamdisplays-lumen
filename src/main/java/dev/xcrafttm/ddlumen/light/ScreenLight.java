@@ -170,7 +170,7 @@ public final class ScreenLight {
         int zx = zonesX, zy = zonesY;
         var models = Minecraft.getInstance().getModelManager().getBlockStateModelSet();
         building = CompletableFuture.supplyAsync(
-                () -> SurfaceBuilder.build(snapshot, g, zx, zy, cfg.shadows, cfg.maxFaces, models), worker);
+                () -> SurfaceBuilder.build(snapshot, g, zx, zy, cfg.range, cfg.shadows, cfg.maxFaces, models), worker);
     }
 
     void cancel() {

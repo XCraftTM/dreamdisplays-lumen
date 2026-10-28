@@ -6,7 +6,8 @@
   "client": [
     "ClientLevelMixin",
     "DisplayFrameUploaderMixin",
-    "GpuFrameUploaderMixin"
+    "GpuFrameUploaderMixin",
+    "IrisFinalPassMixin"
   ],
   "injectors": {
     "defaultRequire": 1

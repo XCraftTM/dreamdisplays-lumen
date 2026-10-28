@@ -36,11 +36,21 @@ joinedFirstServer:true
 skipMultiplayerWarning:true
 OPT
 
+if [ "$SHADERS" = true ]; then
+  # a shader pack from $SHADERPACK_DIR (not part of the repository), switched on in Iris' settings
+  mkdir -p "$RUN/shaderpacks" "$RUN/config"
+  PACK=$(ls "${SHADERPACK_DIR:-/home/CodeProjects/_ref/lumen-test/shaderpacks}" | head -1)
+  cp "${SHADERPACK_DIR:-/home/CodeProjects/_ref/lumen-test/shaderpacks}/$PACK" "$RUN/shaderpacks/"
+  printf 'shaderPack=%s\nenableShaders=true\n' "$PACK" > "$RUN/config/iris.properties"
+fi
+
 python3 -m http.server --bind 127.0.0.1 8899 --directory "$VIDEO_DIR" >/dev/null 2>&1 &
 HTTP=$!
 trap 'kill $HTTP 2>/dev/null || true' EXIT
 
 export LIBGL_ALWAYS_SOFTWARE=1
-timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew --console=plain -q runAutotest \
+# SDL3 finds no fitting GLX visual on Xvfb; EGL works (OpenGL is what Iris needs)
+export SDL_VIDEO_FORCE_EGL=1 SDL_VIDEO_X11_FORCE_EGL=1
+timeout 900 xvfb-run -a -s "-screen 0 1280x720x${XVFB_DEPTH:-24} +extension GLX" ./gradlew --console=plain -q runAutotest \
   -Pshaders=$SHADERS -PtestPrefix=$PREFIX ${GRADLE_EXTRA:-} "${EXTRA[@]}" 2>&1 | grep -E "ddlumen|Dream Displays|dreamdisplays|ERROR|Exception|FATAL" | grep -v "^\s*at " | head -200 || true
 ls -la "$RUN/screenshots" 2>/dev/null || echo "no screenshots"

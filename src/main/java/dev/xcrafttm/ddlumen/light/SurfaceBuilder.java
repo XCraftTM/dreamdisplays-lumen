@@ -65,8 +65,8 @@ final class SurfaceBuilder {
         return new Snapshot(ox, oy, oz, sx, sy, sz, states, min, max);
     }
 
-    static LitSurface build(Snapshot s, ScreenGeometry g, int zonesX, int zonesY, boolean shadows, int maxFaces,
-                            BlockStateModelSet models) {
+    static LitSurface build(Snapshot s, ScreenGeometry g, int zonesX, int zonesY, int range, boolean shadows,
+                            int maxFaces, BlockStateModelSet models) {
         int zones = zonesX * zonesY;
         double[] centers = g.zoneCenters(zonesX, zonesY);
         double zoneArea = g.area() / zones;
@@ -118,7 +118,7 @@ final class SurfaceBuilder {
                                 double[] n = normal(corner, quad.direction());
                                 float sum = 0;
                                 for (int v = 0; v < 4; v++) {
-                                    sum += cornerWeights(s, g, centers, zones, zoneArea, shadows, corner, v, n, w, v * zones);
+                                    sum += cornerWeights(s, g, centers, zones, zoneArea, range, shadows, corner, v, n, w, v * zones);
                                 }
                                 if (sum < MIN_WEIGHT) continue;
 
@@ -206,14 +206,20 @@ final class SurfaceBuilder {
      * surface gives it 1 (its full color). Returns the sum.
      */
     private static float cornerWeights(Snapshot s, ScreenGeometry g, double[] centers, int zones, double zoneArea,
-                                       boolean shadows, double[] c, int v, double[] n, float[] out, int at) {
+                                       int range, boolean shadows, double[] c, int v, double[] n, float[] out, int at) {
         // nudge the corner onto the face, off its edges, so rays do not start inside the neighbors
         double qx = (c[0] + c[3] + c[6] + c[9]) * 0.25, qy = (c[1] + c[4] + c[7] + c[10]) * 0.25, qz = (c[2] + c[5] + c[8] + c[11]) * 0.25;
         double px = c[v * 3] + (qx - c[v * 3]) * 0.02 + n[0] * 0.02;
         double py = c[v * 3 + 1] + (qy - c[v * 3 + 1]) * 0.02 + n[1] * 0.02;
         double pz = c[v * 3 + 2] + (qz - c[v * 3 + 2]) * 0.02 + n[2] * 0.02;
+        // fade out toward the end of the range, so the light has no visible edge there
+        double fade = smoothFade(g.distanceToPicture(px, py, pz), range);
         float sum = 0;
         for (int z = 0; z < zones; z++) {
+            if (fade <= 0) {
+                out[at + z] = 0;
+                continue;
+            }
             double tx = centers[z * 3], ty = centers[z * 3 + 1], tz = centers[z * 3 + 2];
             double dx = px - tx, dy = py - ty, dz = pz - tz;
             double cosEmit = dx * g.nx() + dy * g.ny() + dz * g.nz();
@@ -224,13 +230,19 @@ final class SurfaceBuilder {
             }
             double dist2 = dx * dx + dy * dy + dz * dz;
             // the zone's own size keeps the light finite right in front of it
-            double weight = zoneArea * (cosEmit / Math.sqrt(dist2)) * (cosRecv / Math.sqrt(dist2))
+            double weight = fade * zoneArea * (cosEmit / Math.sqrt(dist2)) * (cosRecv / Math.sqrt(dist2))
                     / (Math.PI * (dist2 + zoneArea * 0.25));
             if (weight > 1e-6 && shadows && !visible(s, px, py, pz, tx, ty, tz)) weight = 0;
             out[at + z] = (float) weight;
             sum += (float) weight;
         }
         return sum;
+    }
+
+    /** 1 up to 60 % of the range, then smoothly down to 0 at the range. */
+    private static double smoothFade(double distance, int range) {
+        double t = Math.clamp((range - distance) / (range * 0.4), 0, 1);
+        return t * t * (3 - 2 * t);
     }
 
     /** True when no full block lies between the two points (voxel walk). */

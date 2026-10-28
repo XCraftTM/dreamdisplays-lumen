@@ -1,6 +1,7 @@
 package dev.xcrafttm.ddlumen;
 
 import com.mojang.brigadier.arguments.FloatArgumentType;
+import dev.xcrafttm.ddlumen.compat.IrisCompat;
 import dev.xcrafttm.ddlumen.light.ScreenLight;
 import dev.xcrafttm.ddlumen.light.ScreenLights;
 import dev.xcrafttm.ddlumen.render.LightRenderer;
@@ -37,9 +38,12 @@ public final class DdLumen implements ClientModInitializer {
                             return 1;
                         }))
                         .then(literal("intensity").then(argument("value", FloatArgumentType.floatArg(0, 16)).executes(ctx -> {
-                            LumenConfig.get().intensity = FloatArgumentType.getFloat(ctx, "value");
+                            // the strength of the mode in use: with or without a shader pack
+                            float value = FloatArgumentType.getFloat(ctx, "value");
+                            if (IrisCompat.isShaderPackInUse()) LumenConfig.get().intensityWithShaders = value;
+                            else LumenConfig.get().intensity = value;
                             LumenConfig.save();
-                            ctx.getSource().sendFeedback(Component.translatable("ddlumen.command.intensity", LumenConfig.get().intensity));
+                            ctx.getSource().sendFeedback(Component.translatable("ddlumen.command.intensity", value));
                             return 1;
                         })))
                         .then(literal("toggle").executes(ctx -> {

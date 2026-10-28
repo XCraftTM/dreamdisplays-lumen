@@ -58,10 +58,9 @@ public record ScreenGeometry(
         return out;
     }
 
-    /** Blocks that can receive light: [range] blocks in front of the picture, spreading out to the sides. */
+    /** Blocks that can receive light: everything up to [range] blocks from the picture, in front of it. */
     public BlockPos[] region(int range) {
-        double spread = range * 0.85;
-        double halfU = width / 2.0 + spread, halfV = height / 2.0 + spread;
+        double halfU = width / 2.0 + range, halfV = height / 2.0 + range;
         double[] xs = new double[8], ys = new double[8], zs = new double[8];
         int n = 0;
         for (int a = -1; a <= 1; a += 2) {
@@ -78,6 +77,15 @@ public record ScreenGeometry(
         BlockPos min = new BlockPos(floorMin(xs), floorMin(ys), floorMin(zs));
         BlockPos max = new BlockPos(floorMax(xs), floorMax(ys), floorMax(zs));
         return new BlockPos[]{min, max};
+    }
+
+    /** Distance from the point to the nearest point of the picture. */
+    public double distanceToPicture(double x, double y, double z) {
+        double dx = x - cx, dy = y - cy, dz = z - cz;
+        double s = Math.clamp(dx * ux + dy * uy + dz * uz, -width / 2.0, width / 2.0);
+        double t = Math.clamp(dx * vx + dy * vy + dz * vz, -height / 2.0, height / 2.0);
+        double ex = dx - ux * s - vx * t, ey = dy - uy * s - vy * t, ez = dz - uz * s - vz * t;
+        return Math.sqrt(ex * ex + ey * ey + ez * ez);
     }
 
     /** True when the point is in front of the picture's plane. */
