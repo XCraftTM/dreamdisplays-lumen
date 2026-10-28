@@ -14,8 +14,8 @@
   "mixins": ["ddlumen.mixins.json"],
   "depends": {
     "fabricloader": ">=0.19.5",
-    "minecraft": "~26.3",
-    "java": ">=25",
+    "minecraft": "${minecraft}",
+    "java": ">=${java}",
     "fabric-api": "*",
     "dreamdisplays": ">=1.10.6"
   },

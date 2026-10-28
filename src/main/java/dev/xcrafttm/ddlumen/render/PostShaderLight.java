@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.PoseStack;
+//#if MC >= 26.3
 import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
 import com.mojang.renderpearl.api.commands.RenderPass;
@@ -16,6 +17,18 @@ import com.mojang.renderpearl.api.pipeline.CompareOp;
 import com.mojang.renderpearl.api.pipeline.DepthStencilState;
 import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
+//#else
+import com.mojang.blaze3d.PrimitiveTopology;
+import com.mojang.blaze3d.buffers.GpuBuffer;
+import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import com.mojang.blaze3d.pipeline.BlendFunction;
+import com.mojang.blaze3d.pipeline.ColorTargetState;
+import com.mojang.blaze3d.pipeline.DepthStencilState;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.platform.BlendFactor;
+import com.mojang.blaze3d.platform.CompareOp;
+import com.mojang.blaze3d.systems.RenderPass;
+//#endif
 import dev.xcrafttm.ddlumen.DdLumen;
 import dev.xcrafttm.ddlumen.compat.IrisCompat;
 import dev.xcrafttm.ddlumen.light.LitSurface;
@@ -96,10 +109,18 @@ public final class PostShaderLight {
             try (GpuBuffer vertices = RenderSystem.getDevice().createBuffer(() -> "ddlumen light", GpuBuffer.USAGE_VERTEX, mesh.vertexBuffer());
                  RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "ddlumen light after shaders",
                          target.getColorTextureView(), Optional.empty(), target.getDepthTextureView(), OptionalDouble.empty())) {
+                //#if MC >= 26.3
                 pass.setPipeline(RenderSystem.getCompiledPipeline(pipeline()));
+                //#else
+                pass.setPipeline(pipeline());
+                //#endif
                 RenderSystem.bindDefaultUniforms(pass);
                 pass.setUniform("DynamicTransforms", RenderSystem.getDynamicUniforms().writeTransform(modelView, new Matrix4f()));
+                //#if MC >= 26.3
                 pass.setUniform("Sampler0", atlas.getTextureView(), atlas.getSampler());
+                //#else
+                pass.bindTexture("Sampler0", atlas.getTextureView(), atlas.getSampler());
+                //#endif
                 pass.setVertexBuffer(0, vertices.slice());
                 pass.setIndexBuffer(indexBuffer, indices.type());
                 pass.drawIndexed(indexCount, 1, 0, 0, 0);

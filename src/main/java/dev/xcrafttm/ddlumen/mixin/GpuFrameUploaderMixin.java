@@ -4,7 +4,11 @@ import com.dreamdisplays.api.media.model.FramePixelFormat;
 import com.dreamdisplays.api.media.player.GpuTextureRef;
 import com.dreamdisplays.platform.client.render.GpuFrameUploader;
 import com.dreamdisplays.platform.client.render.GpuTextureHandle;
+//#if MC >= 26.3
 import com.mojang.renderpearl.api.textures.GpuTexture;
+//#else
+import com.mojang.blaze3d.textures.GpuTexture;
+//#endif
 import dev.xcrafttm.ddlumen.capture.FrameCapture;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

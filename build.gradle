@@ -1,9 +1,23 @@
 plugins {
-    // 26.x is not obfuscated: no remapping
-    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    // obfuscated versions (up to 1.21.11) are remapped from Mojang's mappings; 26.x is not obfuscated
+    id 'fabric-loom' version "${loom_version}" apply false
+    id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
 }
 
-version = project.mod_version
+// one source tree for every supported Minecraft version: ./gradlew build -Pminecraft_version=1.21.1
+apply from: 'preprocess.gradle'
+def mc = project.minecraft_version
+def at = { String v -> ppCompareVersions(mc, v) >= 0 }
+def obfuscated = !at('26')
+apply plugin: obfuscated ? 'fabric-loom' : 'net.fabricmc.fabric-loom'
+
+def versionFile = file("versions/${mc}.properties")
+if (!versionFile.exists()) throw new GradleException("Minecraft ${mc} is not supported (no ${versionFile.name})")
+def deps = new Properties()
+versionFile.withInputStream { deps.load(it) }
+def javaRelease = deps.java_version as int
+
+version = "${project.mod_version}+${mc}"
 group = project.maven_group
 base { archivesName = 'dreamdisplays-lumen' }
 
@@ -19,6 +33,23 @@ repositories {
     mavenCentral()
 }
 
+// dev only: a test scene and a driver that takes screenshots (see scripts/autotest.sh)
+sourceSets {
+    testmod {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+
+ext.ppMinecraft = mc
+ext.ppLoader = 'fabric'
+preprocessSources(['src/main/java'], ['**/*.java'])
+preprocessSources(['src/testmod/java'], ['**/*.java'], [], 'testmod')
+
+// the shaders of the game's rendering era (their language and uniforms change with it)
+def shaderEra = at('26.3') ? 'renderpearl' : at('1.21.5') ? 'pipeline' : 'legacy'
+sourceSets.main.resources.srcDir "src/shaders/${shaderEra}"
+
 // LambDynamicLights only ships its API nested inside the mod jar
 configurations { lambdynamiclights { transitive = false } }
 
@@ -33,29 +64,31 @@ def extractLdlApi = tasks.register('extractLdlApi', Copy) {
 }
 
 dependencies {
-    minecraft "com.mojang:minecraft:${minecraft_version}"
-    implementation "net.fabricmc:fabric-loader:${loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
-
-    implementation "maven.modrinth:dreamdisplays:${dreamdisplays_version}"
-
-    lambdynamiclights "maven.modrinth:lambdynamiclights:${lambdynamiclights_version}"
+    minecraft "com.mojang:minecraft:${mc}"
+    if (obfuscated) {
+        mappings loom.officialMojangMappings()
+        modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+        modImplementation "net.fabricmc.fabric-api:fabric-api:${deps.fabric_api_version}"
+        modImplementation "maven.modrinth:dreamdisplays:${deps.dreamdisplays_version}"
+        modCompileOnly "maven.modrinth:iris:${deps.iris_version}"
+        modLocalRuntime "maven.modrinth:lambdynamiclights:${deps.lambdynamiclights_version}"
+        if (project.shaders.toBoolean()) {
+            modLocalRuntime "maven.modrinth:iris:${deps.iris_version}"
+            modLocalRuntime "maven.modrinth:sodium:${deps.sodium_version}"
+        }
+    } else {
+        implementation "net.fabricmc:fabric-loader:${loader_version}"
+        implementation "net.fabricmc.fabric-api:fabric-api:${deps.fabric_api_version}"
+        implementation "maven.modrinth:dreamdisplays:${deps.dreamdisplays_version}"
+        compileOnly "maven.modrinth:iris:${deps.iris_version}"
+        localRuntime "maven.modrinth:lambdynamiclights:${deps.lambdynamiclights_version}"
+        if (project.shaders.toBoolean()) {
+            localRuntime "maven.modrinth:iris:${deps.iris_version}"
+            localRuntime "maven.modrinth:sodium:${deps.sodium_version}"
+        }
+    }
+    lambdynamiclights "maven.modrinth:lambdynamiclights:${deps.lambdynamiclights_version}"
     compileOnly files(ldlApiDir.map { it.asFileTree.matching { include '*.jar' } }) { builtBy extractLdlApi }
-    localRuntime "maven.modrinth:lambdynamiclights:${lambdynamiclights_version}"
-
-    compileOnly "maven.modrinth:iris:${iris_version}"
-    if (project.shaders.toBoolean()) {
-        localRuntime "maven.modrinth:iris:${iris_version}"
-        localRuntime "maven.modrinth:sodium:${sodium_version}"
-    }
-}
-
-// dev only: a test scene and a driver that takes screenshots (see scripts/autotest.sh)
-sourceSets {
-    testmod {
-        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
-        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
-    }
 }
 
 loom {
@@ -68,7 +101,7 @@ loom {
             client()
             name = 'Lumen auto test'
             source sourceSets.testmod
-            runDir = 'run/autotest'
+            runDir = "run/autotest/${mc}"
             programArgs '--quickPlaySingleplayer', 'lumen-test', '--width', '960', '--height', '540'
             // the test video is served from 127.0.0.1, which Dream Displays refuses by default
             vmArgs '-Xmx3G', '-Ddreamdisplays.allowPrivateUrls=true'
@@ -80,16 +113,19 @@ loom {
 }
 
 processResources {
-    def props = [version: project.version]
+    def props = [version: project.version, minecraft: "~${mc}", java: javaRelease, mixinJava: Math.min(javaRelease, 21)]
     inputs.properties props
-    filesMatching('fabric.mod.json') { expand props }
+    filesMatching(['fabric.mod.json', 'ddlumen.mixins.json']) { expand props }
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
+    it.options.release = javaRelease
     it.options.encoding = 'UTF-8'
 }
 
-jar {
-    from('LICENSE') { rename { "${it}_${base.archivesName.get()}" } }
+// obfuscated versions: the remapped jar is the release
+if (obfuscated) {
+    remapJar { archiveFileName = "dreamdisplays-lumen-${project.mod_version}+${mc}.jar" }
+} else {
+    jar { archiveFileName = "dreamdisplays-lumen-${project.mod_version}+${mc}.jar" }
 }

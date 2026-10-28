@@ -3,7 +3,7 @@
   "minVersion": "0.8",
   "package": "dev.xcrafttm.ddlumen.mixin",
   "plugin": "dev.xcrafttm.ddlumen.mixin.LumenMixinPlugin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_${mixinJava}",
   "client": [
     "ClientLevelMixin",
     "DisplayFrameUploaderMixin",

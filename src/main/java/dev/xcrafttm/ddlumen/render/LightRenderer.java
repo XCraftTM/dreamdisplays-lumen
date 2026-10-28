@@ -3,6 +3,7 @@ package dev.xcrafttm.ddlumen.render;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+//#if MC >= 26.3
 import com.mojang.renderpearl.api.pipeline.BlendFactor;
 import com.mojang.renderpearl.api.pipeline.BlendFunction;
 import com.mojang.renderpearl.api.pipeline.ColorTargetState;
@@ -10,6 +11,15 @@ import com.mojang.renderpearl.api.pipeline.CompareOp;
 import com.mojang.renderpearl.api.pipeline.DepthStencilState;
 import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
+//#else
+import com.mojang.blaze3d.PrimitiveTopology;
+import com.mojang.blaze3d.pipeline.BlendFunction;
+import com.mojang.blaze3d.pipeline.ColorTargetState;
+import com.mojang.blaze3d.pipeline.DepthStencilState;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.platform.BlendFactor;
+import com.mojang.blaze3d.platform.CompareOp;
+//#endif
 import dev.xcrafttm.ddlumen.LumenConfig;
 import dev.xcrafttm.ddlumen.compat.IrisCompat;
 import dev.xcrafttm.ddlumen.light.LitSurface;
@@ -18,7 +28,9 @@ import dev.xcrafttm.ddlumen.light.ScreenLights;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.renderer.BindGroupLayouts;
 import net.minecraft.client.renderer.RenderPipelines;
+//#if MC >= 26.3
 import net.minecraft.client.renderer.oit.OitPipelineSet;
+//#endif
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlas;
@@ -55,17 +67,21 @@ public final class LightRenderer {
             .withColorTargetState(new ColorTargetState(new BlendFunction(BlendFactor.ONE, BlendFactor.ONE, BlendFactor.ZERO, BlendFactor.ONE)))
             .build();
 
+    //#if MC >= 26.3
     private static final OitPipelineSet OIT_PIPELINES = OitPipelineSet.builder("ddlumen_screen_light",
                     RenderPipeline.builder(SNIPPET).withShaderDefine("OIT_ADDITIVE"))
             .withDepthBoundsModifier(b -> b.withDepthStencilState(DEPTH))
             .withTransmittanceModifier(b -> b.withDepthStencilState(DEPTH))
             .withAccumulateModifier(b -> b.withDepthStencilState(DEPTH))
             .build();
+    //#endif
 
     private static final RenderType RENDER_TYPE = RenderType.create("ddlumen_screen_light",
             RenderSetup.builder(PIPELINE)
                     .withTexture("Sampler0", TextureAtlas.LOCATION_BLOCKS)
+                    //#if MC >= 26.3
                     .setOitPipelines(OIT_PIPELINES)
+                    //#endif
                     .createRenderSetup());
 
     static {

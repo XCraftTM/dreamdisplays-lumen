@@ -2,11 +2,14 @@
 # Runs the test scene in a headless client (Xvfb + Mesa software rendering) and leaves screenshots in
 # run/autotest/screenshots. Needs: a flat 26.3 world in $WORLD and the test video in $VIDEO_DIR.
 #
+#   MC=1.21.1 scripts/autotest.sh       # another Minecraft version (default 26.3)
 #   scripts/autotest.sh [shaders]      # "shaders" adds Sodium + Iris (and the pack in run/autotest/shaderpacks)
 #   VIDEO_URL=https://youtu.be/... SEEK=45000 scripts/autotest.sh [shaders]   # any video: shot pairs every few seconds
 set -euo pipefail
 cd "$(dirname "$0")/.."
-WORLD=${WORLD:-/home/CodeProjects/_ref/lumen-test/worldgen/lumen-test}
+# the Minecraft version to test (see versions/); its flat world comes from scripts/makeworld.sh
+MC=${MC:-26.3}
+WORLD=${WORLD:-/home/CodeProjects/_ref/lumen-test/worlds/$MC/lumen-test}
 VIDEO_DIR=${VIDEO_DIR:-/home/CodeProjects/_ref/lumen-test/video}
 JAVA_HOME=${JAVA_HOME:-$(ls -d ~/.gradle/jdks/eclipse_adoptium-25-amd64-linux.2)}
 export JAVA_HOME
@@ -20,7 +23,7 @@ if [ -n "${VIDEO_URL:-}" ]; then
   PREFIX=$PREFIX-video
 fi
 
-RUN=run/autotest
+RUN=run/autotest/$MC
 rm -rf "$RUN/saves/lumen-test" "$RUN/config/dreamdisplays" "$RUN/dreamdisplays"
 mkdir -p "$RUN/saves"
 cp -r "$WORLD" "$RUN/saves/lumen-test"
@@ -54,5 +57,5 @@ export LIBGL_ALWAYS_SOFTWARE=1
 # SDL3 finds no fitting GLX visual on Xvfb; EGL works (OpenGL is what Iris needs)
 export SDL_VIDEO_FORCE_EGL=1 SDL_VIDEO_X11_FORCE_EGL=1
 timeout 900 xvfb-run -a -s "-screen 0 1280x720x${XVFB_DEPTH:-24} +extension GLX" ./gradlew --console=plain -q runAutotest \
-  -Pshaders=$SHADERS -PtestPrefix=$PREFIX ${GRADLE_EXTRA:-} "${EXTRA[@]}" 2>&1 | grep -E "ddlumen|Dream Displays|dreamdisplays|ERROR|Exception|FATAL" | grep -v "^\s*at " | head -200 || true
+  -Pminecraft_version=$MC -Pshaders=$SHADERS -PtestPrefix=$PREFIX ${GRADLE_EXTRA:-} "${EXTRA[@]}" 2>&1 | grep -E "ddlumen|Dream Displays|dreamdisplays|ERROR|Exception|FATAL" | grep -v "^\s*at " | head -200 || true
 ls -la "$RUN/screenshots" 2>/dev/null || echo "no screenshots"
