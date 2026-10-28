@@ -1,24 +1,11 @@
 package dev.xcrafttm.ddlumen.render;
 
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 //#if MC >= 26.3
-import com.mojang.renderpearl.api.pipeline.BlendFactor;
-import com.mojang.renderpearl.api.pipeline.BlendFunction;
-import com.mojang.renderpearl.api.pipeline.ColorTargetState;
-import com.mojang.renderpearl.api.pipeline.CompareOp;
-import com.mojang.renderpearl.api.pipeline.DepthStencilState;
-import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 //#else
-import com.mojang.blaze3d.PrimitiveTopology;
-import com.mojang.blaze3d.pipeline.BlendFunction;
-import com.mojang.blaze3d.pipeline.ColorTargetState;
-import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.platform.BlendFactor;
-import com.mojang.blaze3d.platform.CompareOp;
 //#endif
 import dev.xcrafttm.ddlumen.LumenConfig;
 import dev.xcrafttm.ddlumen.compat.IrisCompat;
@@ -26,15 +13,9 @@ import dev.xcrafttm.ddlumen.light.LitSurface;
 import dev.xcrafttm.ddlumen.light.ScreenLight;
 import dev.xcrafttm.ddlumen.light.ScreenLights;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
-import net.minecraft.client.renderer.BindGroupLayouts;
-import net.minecraft.client.renderer.RenderPipelines;
-//#if MC >= 26.3
-import net.minecraft.client.renderer.oit.OitPipelineSet;
-//#endif
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlas;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -47,40 +28,13 @@ public final class LightRenderer {
     /** Light below this is not drawn; it is subtracted from all light, so nothing jumps at the cut. */
     private static final float MIN_LIGHT = 1f / 16384f;
     private static final float MIN_SHOWN = (float) Math.sqrt(MIN_LIGHT);
-    /**
-     * No depth bias: on the Vulkan backend any bias hid the faces entirely. The faces are lifted off the blocks a
-     * little instead (see SurfaceBuilder.LIFT).
-     */
-    private static final DepthStencilState DEPTH = new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false);
-
-    private static final RenderPipeline.Snippet SNIPPET = RenderPipeline.builder(RenderPipelines.MATRICES_FOG_SNIPPET)
-            .withVertexShader(id("core/screen_light"))
-            .withFragmentShader(id("core/screen_light"))
-            .withBindGroupLayout(BindGroupLayouts.SAMPLER0)
-            .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
-            .withPrimitiveTopology(PrimitiveTopology.QUADS)
-            .withDepthStencilState(DEPTH)
-            .buildSnippet();
-
-    public static final RenderPipeline PIPELINE = RenderPipeline.builder(SNIPPET)
-            .withLocation(id("pipeline/screen_light"))
-            .withColorTargetState(new ColorTargetState(new BlendFunction(BlendFactor.ONE, BlendFactor.ONE, BlendFactor.ZERO, BlendFactor.ONE)))
-            .build();
-
-    //#if MC >= 26.3
-    private static final OitPipelineSet OIT_PIPELINES = OitPipelineSet.builder("ddlumen_screen_light",
-                    RenderPipeline.builder(SNIPPET).withShaderDefine("OIT_ADDITIVE"))
-            .withDepthBoundsModifier(b -> b.withDepthStencilState(DEPTH))
-            .withTransmittanceModifier(b -> b.withDepthStencilState(DEPTH))
-            .withAccumulateModifier(b -> b.withDepthStencilState(DEPTH))
-            .build();
-    //#endif
+    public static final RenderPipeline PIPELINE = Pipelines.additive("pipeline/screen_light", Pipelines.REVERSED_Z);
 
     private static final RenderType RENDER_TYPE = RenderType.create("ddlumen_screen_light",
             RenderSetup.builder(PIPELINE)
                     .withTexture("Sampler0", TextureAtlas.LOCATION_BLOCKS)
                     //#if MC >= 26.3
-                    .setOitPipelines(OIT_PIPELINES)
+                    .setOitPipelines(Pipelines.oit("ddlumen_screen_light"))
                     //#endif
                     .createRenderSetup());
 
@@ -180,7 +134,4 @@ public final class LightRenderer {
         return Math.max(0f, (float) Math.sqrt(light) - MIN_SHOWN);
     }
 
-    private static Identifier id(String path) {
-        return Identifier.fromNamespaceAndPath("ddlumen", path);
-    }
 }

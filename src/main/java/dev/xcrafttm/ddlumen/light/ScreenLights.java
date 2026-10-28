@@ -55,7 +55,11 @@ public final class ScreenLights {
             if (!LIGHTS.isEmpty()) clear();
             return;
         }
+        //#if MC >= 26.2
         Vec3 camera = mc.gameRenderer.mainCamera().position();
+        //#else
+        Vec3 camera = mc.gameRenderer.getMainCamera().position();
+        //#endif
         double reach = cfg.maxDistance + cfg.range;
         Set<UUID> seen = new HashSet<>();
         for (Display display : DreamDisplays.getDisplays()) {

@@ -10,41 +10,37 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
 import com.mojang.renderpearl.api.commands.RenderPass;
-import com.mojang.renderpearl.api.pipeline.BlendFactor;
-import com.mojang.renderpearl.api.pipeline.BlendFunction;
-import com.mojang.renderpearl.api.pipeline.ColorTargetState;
-import com.mojang.renderpearl.api.pipeline.CompareOp;
-import com.mojang.renderpearl.api.pipeline.DepthStencilState;
 import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
-//#else
+//#elif MC >= 26.2
 import com.mojang.blaze3d.PrimitiveTopology;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
-import com.mojang.blaze3d.pipeline.BlendFunction;
-import com.mojang.blaze3d.pipeline.ColorTargetState;
-import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.platform.BlendFactor;
-import com.mojang.blaze3d.platform.CompareOp;
 import com.mojang.blaze3d.systems.RenderPass;
+//#else
+import com.mojang.blaze3d.buffers.GpuBuffer;
+import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.systems.RenderPass;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
 //#endif
 import dev.xcrafttm.ddlumen.DdLumen;
 import dev.xcrafttm.ddlumen.compat.IrisCompat;
 import dev.xcrafttm.ddlumen.light.LitSurface;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.BindGroupLayouts;
 import com.mojang.blaze3d.ProjectionType;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
-import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalDouble;
+import java.util.OptionalInt;
 
 /**
  * The colored light while a shader pack is active. Packs render deferred: what is drawn into their buffers is surface
@@ -70,7 +66,11 @@ public final class PostShaderLight {
     /** Collect phase: remembers what to draw and the camera of this frame. */
     static void queue(LitSurface surface, float[] radiance, PoseStack.Pose pose) {
         if (PENDING.isEmpty()) {
+            //#if MC >= 26.2
             modelView = RenderSystem.getModelViewMatrixCopy();
+            //#else
+            modelView = new Matrix4f(RenderSystem.getModelViewMatrix());
+            //#endif
             projection = RenderSystem.getProjectionMatrixBuffer();
             projectionType = RenderSystem.getProjectionType();
         }
@@ -92,38 +92,67 @@ public final class PostShaderLight {
 
     private static void drawPending() {
         Minecraft mc = Minecraft.getInstance();
+        //#if MC >= 26.2
         var target = mc.gameRenderer.mainRenderTarget();
+        //#else
+        var target = mc.getMainRenderTarget();
+        //#endif
         if (target.getColorTextureView() == null || target.getDepthTextureView() == null) return;
 
         if (bytes == null) bytes = new ByteBufferBuilder(1 << 20);
+        //#if MC >= 26.2
         BufferBuilder builder = new BufferBuilder(bytes, PrimitiveTopology.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
+        //#else
+        BufferBuilder builder = new BufferBuilder(bytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
+        //#endif
         for (Draw draw : PENDING) LightRenderer.emit(draw.surface(), draw.radiance(), false, draw.pose(), builder);
         try (MeshData mesh = builder.build()) {
             if (mesh == null) return;
             int indexCount = mesh.drawState().indexCount();
+            //#if MC >= 26.2
             RenderSystem.AutoStorageIndexBuffer indices = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS);
+            //#else
+            RenderSystem.AutoStorageIndexBuffer indices = RenderSystem.getSequentialBuffer(VertexFormat.Mode.QUADS);
+            //#endif
             GpuBuffer indexBuffer = indices.getBuffer(indexCount);
             AbstractTexture atlas = mc.getTextureManager().getTexture(TextureAtlas.LOCATION_BLOCKS);
+            //#if MC >= 26.2
+            GpuBufferSlice transform = RenderSystem.getDynamicUniforms().writeTransform(modelView, new Matrix4f());
+            //#else
+            GpuBufferSlice transform = RenderSystem.getDynamicUniforms()
+                    .writeTransform(modelView, new Vector4f(1, 1, 1, 1), new Vector3f(), new Matrix4f());
+            //#endif
             RenderSystem.backupProjectionMatrix();
             RenderSystem.setProjectionMatrix(projection, projectionType);
             try (GpuBuffer vertices = RenderSystem.getDevice().createBuffer(() -> "ddlumen light", GpuBuffer.USAGE_VERTEX, mesh.vertexBuffer());
+                 //#if MC >= 26.2
                  RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "ddlumen light after shaders",
                          target.getColorTextureView(), Optional.empty(), target.getDepthTextureView(), OptionalDouble.empty())) {
+                 //#else
+                 RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "ddlumen light after shaders",
+                         target.getColorTextureView(), OptionalInt.empty(), target.getDepthTextureView(), OptionalDouble.empty())) {
+                 //#endif
                 //#if MC >= 26.3
                 pass.setPipeline(RenderSystem.getCompiledPipeline(pipeline()));
                 //#else
                 pass.setPipeline(pipeline());
                 //#endif
                 RenderSystem.bindDefaultUniforms(pass);
-                pass.setUniform("DynamicTransforms", RenderSystem.getDynamicUniforms().writeTransform(modelView, new Matrix4f()));
+                pass.setUniform("DynamicTransforms", transform);
                 //#if MC >= 26.3
                 pass.setUniform("Sampler0", atlas.getTextureView(), atlas.getSampler());
                 //#else
                 pass.bindTexture("Sampler0", atlas.getTextureView(), atlas.getSampler());
                 //#endif
+                //#if MC >= 26.2
                 pass.setVertexBuffer(0, vertices.slice());
                 pass.setIndexBuffer(indexBuffer, indices.type());
                 pass.drawIndexed(indexCount, 1, 0, 0, 0);
+                //#else
+                pass.setVertexBuffer(0, vertices);
+                pass.setIndexBuffer(indexBuffer, indices.type());
+                pass.drawIndexed(0, 0, indexCount, 1);
+                //#endif
             } finally {
                 RenderSystem.restoreProjectionMatrix();
             }
@@ -132,22 +161,9 @@ public final class PostShaderLight {
 
     /** Iris may turn reversed Z off while a pack renders; the depth test has to match. */
     private static RenderPipeline pipeline() {
-        boolean reversed = IrisCompat.isReverseZ();
-        if (reversed && reversedZ == null) reversedZ = build(CompareOp.GREATER_THAN_OR_EQUAL, "reversed");
-        if (!reversed && forwardZ == null) forwardZ = build(CompareOp.LESS_THAN_OR_EQUAL, "forward");
+        boolean reversed = IrisCompat.isReverseZ() && Pipelines.REVERSED_Z;
+        if (reversed && reversedZ == null) reversedZ = Pipelines.additive("pipeline/screen_light_after_shaders_reversed", true);
+        if (!reversed && forwardZ == null) forwardZ = Pipelines.additive("pipeline/screen_light_after_shaders_forward", false);
         return reversed ? reversedZ : forwardZ;
-    }
-
-    private static RenderPipeline build(CompareOp depthTest, String name) {
-        return RenderPipeline.builder(RenderPipelines.MATRICES_FOG_SNIPPET)
-                .withLocation(Identifier.fromNamespaceAndPath("ddlumen", "pipeline/screen_light_after_shaders_" + name))
-                .withVertexShader(Identifier.fromNamespaceAndPath("ddlumen", "core/screen_light"))
-                .withFragmentShader(Identifier.fromNamespaceAndPath("ddlumen", "core/screen_light"))
-                .withBindGroupLayout(BindGroupLayouts.SAMPLER0)
-                .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
-                .withPrimitiveTopology(PrimitiveTopology.QUADS)
-                .withDepthStencilState(new DepthStencilState(depthTest, false))
-                .withColorTargetState(new ColorTargetState(new BlendFunction(BlendFactor.ONE, BlendFactor.ONE, BlendFactor.ZERO, BlendFactor.ONE)))
-                .build();
     }
 }

@@ -53,7 +53,7 @@ public final class TestDriver implements ClientModInitializer {
             for (ScreenLight light : ScreenLights.all()) {
                 FrameCapture.ZoneFrame frame = FrameCapture.latest(light.id);
                 sb.append(String.format(Locale.ROOT, " [%s faces=%d lit=%s frame=%s screen=%s]", light.id, light.surface().quads,
-                        light.isLit(), frame == null ? "none" : describe(frame), mc.gui.screen() == null ? "-" : mc.gui.screen().getClass().getSimpleName()));
+                        light.isLit(), frame == null ? "none" : describe(frame), screen(mc) == null ? "-" : screen(mc).getClass().getSimpleName()));
             }
             TestScene.LOG.info("fps={} submits={} drawnFaces={} lights:{}", mc.getFps(),
                     dev.xcrafttm.ddlumen.render.LightRenderer.lastSubmits, dev.xcrafttm.ddlumen.render.LightRenderer.lastFaces,
@@ -78,9 +78,9 @@ public final class TestDriver implements ClientModInitializer {
             menuTick(mc, now);
             return;
         }
-        if (mc.gui.screen() != null) return;
+        if (screen(mc) != null) return;
 
-        if (mc.gui.screen() != null) return;
+        if (screen(mc) != null) return;
         Phase phase = null;
         ScreenLight light = ScreenLights.all().stream().findFirst().orElse(null);
         if (light != null) {
@@ -115,7 +115,7 @@ public final class TestDriver implements ClientModInitializer {
 
     /** Waits for playback, seeks once, then takes a shot with and one without the light every few seconds. */
     private void videoTick(Minecraft mc, long now) {
-        if (mc.gui.screen() != null) return;
+        if (screen(mc) != null) return;
         Display display = null;
         for (Display d : DreamDisplays.getDisplays()) display = d;
         if (display == null || !display.isPlaying()) return;
@@ -170,14 +170,28 @@ public final class TestDriver implements ClientModInitializer {
             return;
         }
         if (now - menuOpenedAt > 2500 && doneAt == 0) {
-            TestScene.LOG.info("Menu screen: {}", mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName());
+            TestScene.LOG.info("Menu screen: {}", screen(mc) == null ? "none" : screen(mc).getClass().getName());
             shot(mc, "menu");
             doneAt = now;
         }
     }
 
+    /** The open screen, if any. */
+    private static Object screen(Minecraft mc) {
+        //#if MC >= 26.2
+        return mc.gui.screen();
+        //#else
+        return mc.screen;
+        //#endif
+    }
+
     private void shot(Minecraft mc, String name) {
-        Screenshot.grab(mc.gameDirectory, prefix + "-" + name + ".png", mc.gameRenderer.mainRenderTarget(), 1,
+        //#if MC >= 26.2
+        var target = mc.gameRenderer.mainRenderTarget();
+        //#else
+        var target = mc.getMainRenderTarget();
+        //#endif
+        Screenshot.grab(mc.gameDirectory, prefix + "-" + name + ".png", target, 1,
                 msg -> TestScene.LOG.info("Screenshot {}: {}", name, msg.getString()));
     }
 
