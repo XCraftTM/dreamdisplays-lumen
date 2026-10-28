@@ -30,7 +30,11 @@ The mod is client-only: servers only need Dream Displays itself (plugin or serve
 
 ## Settings
 
-`config/ddlumen.json` (created on first start; reload with `/ddlumen reload`):
+**In the display menu:** Dream Displays' menu of each display gets a **Room light** row below *Brightness*:
+how strongly this display lights the room, 0–200 % (0 % turns its light off), with a reset button like the other
+rows. It is stored per display and only for you, like volume and brightness (`displayLight` in the file below).
+
+**Everything else** is in `config/ddlumen.json` (created on first start; reload with `/ddlumen reload`):
 
 | Setting | Default | |
 |---|---|---|
@@ -48,6 +52,7 @@ The mod is client-only: servers only need Dream Displays itself (plugin or serve
 | `blockLightMax` | `13` | highest block light level |
 | `coloredLightWithShaders` | `true` | colored light while a shader pack is active |
 | `intensityWithShaders` | `1.5` | strength of the colored light while a shader pack is active |
+| `displayLight` | `{}` | light strength per display id, set in the display menu |
 | `irisProgram` | `NONE` | `NONE` draws the light after the pack's final pass (recommended). An Iris program name (`TEXTURED`, ...) draws it inside the pack instead, where the pack shades it like a surface |
 
 `/ddlumen status` shows the displays nearby and their lit block faces.
@@ -65,7 +70,9 @@ The mod is client-only: servers only need Dream Displays itself (plugin or serve
    frame holds gamma-encoded colors). The faces are drawn with an additive pipeline over the block atlas, lifted
    0.003 blocks off the terrain (a depth bias hid them on the Vulkan backend), and with Minecraft's improved
    transparency (OIT) as an additive OIT surface. Toward the end of the range the light fades out smoothly.
-5. With a shader pack the same faces are drawn in a render pass of their own on the finished picture, right after
+5. The **Room light** row is added to `DisplayMenu.settingsRows()` with Dream Displays' own slider and reset button;
+   the menu layout gets one row more height (`MenuLayout.compute`).
+6. With a shader pack the same faces are drawn in a render pass of their own on the finished picture, right after
    Iris' final pass (`IrisRenderingPipeline.finalizeLevelRendering`).
 
 ## Building

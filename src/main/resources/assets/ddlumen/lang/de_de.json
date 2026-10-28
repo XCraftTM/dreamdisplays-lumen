@@ -3,5 +3,10 @@
   "ddlumen.command.intensity": "Dream Displays Lumen: Lichtstärke %s.",
   "ddlumen.command.on": "Dream Displays Lumen: an.",
   "ddlumen.command.off": "Dream Displays Lumen: aus.",
-  "ddlumen.command.status": "Dream Displays Lumen: %s Displays in der Nähe, %s beleuchtete Blockflächen."
+  "ddlumen.command.status": "Dream Displays Lumen: %s Displays in der Nähe, %s beleuchtete Blockflächen.",
+  "ddlumen.menu.light": "Raumlicht",
+  "ddlumen.menu.light.off": "Aus",
+  "ddlumen.menu.light.tooltip.title": "Raumlicht",
+  "ddlumen.menu.light.tooltip.body": "Wie stark dieses Display den Raum in den Farben seines Videos beleuchtet. Nur für dich.",
+  "ddlumen.menu.light.tooltip.value": "Raumlicht: %s"
 }

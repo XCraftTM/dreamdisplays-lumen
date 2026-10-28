@@ -3,5 +3,10 @@
   "ddlumen.command.intensity": "Dream Displays Lumen: light intensity %s.",
   "ddlumen.command.on": "Dream Displays Lumen: on.",
   "ddlumen.command.off": "Dream Displays Lumen: off.",
-  "ddlumen.command.status": "Dream Displays Lumen: %s displays nearby, %s lit block faces."
+  "ddlumen.command.status": "Dream Displays Lumen: %s displays nearby, %s lit block faces.",
+  "ddlumen.menu.light": "Room light",
+  "ddlumen.menu.light.off": "Off",
+  "ddlumen.menu.light.tooltip.title": "Room light",
+  "ddlumen.menu.light.tooltip.body": "How strongly this display lights the room in the colors of its video. Only for you.",
+  "ddlumen.menu.light.tooltip.value": "Room light: %s"
 }

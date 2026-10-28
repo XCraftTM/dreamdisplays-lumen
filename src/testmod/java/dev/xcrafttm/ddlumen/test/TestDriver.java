@@ -74,6 +74,11 @@ public final class TestDriver implements ClientModInitializer {
             videoTick(mc, now);
             return;
         }
+        if (mode.equals("menu")) {
+            menuTick(mc, now);
+            return;
+        }
+        if (mc.gui.screen() != null) return;
 
         if (mc.gui.screen() != null) return;
         Phase phase = null;
@@ -133,6 +138,39 @@ public final class TestDriver implements ClientModInitializer {
             videoShots++;
             nextShotAt = now + 3500;
             if (videoShots >= VIDEO_SHOTS) doneAt = now;
+        }
+    }
+
+    private long menuOpenedAt;
+
+    /** Opens Dream Displays' menu of the test display (with "Room light" at 150 %) and takes a shot of it. */
+    private void menuTick(Minecraft mc, long now) {
+        ScreenLight light = ScreenLights.all().stream().findFirst().orElse(null);
+        if (light == null || !light.isLit()) return;
+        if (menuOpenedAt == 0) {
+            try {
+                Class<?> registry = Class.forName("com.dreamdisplays.platform.client.displays.DisplayRegistry");
+                Object instance = registry.getField("INSTANCE").get(null);
+                Object screen = null;
+                for (var m : registry.getMethods()) {
+                    if (m.getName().equals("getScreens") && java.util.Map.class.isAssignableFrom(m.getReturnType())) {
+                        screen = ((java.util.Map<?, ?>) m.invoke(instance)).get(light.id);
+                    }
+                }
+                LumenConfig.get().setDisplayLight(light.id, 1.5f);
+                com.dreamdisplays.platform.client.ui.DisplayMenu.Companion.open(
+                        (com.dreamdisplays.platform.client.displays.DisplayScreen) screen);
+                menuOpenedAt = now;
+            } catch (ReflectiveOperationException e) {
+                TestScene.LOG.error("Could not open the display menu", e);
+                doneAt = now;
+            }
+            return;
+        }
+        if (now - menuOpenedAt > 2500 && doneAt == 0) {
+            TestScene.LOG.info("Menu screen: {}", mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName());
+            shot(mc, "menu");
+            doneAt = now;
         }
     }
 

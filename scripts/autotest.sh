@@ -14,6 +14,7 @@ SHADERS=false
 PREFIX=lumen
 if [ "${1:-}" = shaders ]; then SHADERS=true; PREFIX=lumen-shaders; fi
 EXTRA=()
+if [ "${MODE:-}" = menu ]; then EXTRA=(-PtestMode=menu); PREFIX=$PREFIX-menu; fi
 if [ -n "${VIDEO_URL:-}" ]; then
   EXTRA=(-PtestMode=video "-PtestVideo=$VIDEO_URL" "-PtestSeek=${SEEK:-0}")
   PREFIX=$PREFIX-video

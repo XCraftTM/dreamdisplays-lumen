@@ -7,8 +7,11 @@
   "client": [
     "ClientLevelMixin",
     "DisplayFrameUploaderMixin",
+    "DisplayMenuMixin",
     "GpuFrameUploaderMixin",
-    "IrisFinalPassMixin"
+    "IrisFinalPassMixin",
+    "MenuLayoutAccessor",
+    "MenuLayoutMixin"
   ],
   "injectors": {
     "defaultRequire": 1

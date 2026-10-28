@@ -48,6 +48,7 @@ public final class ScreenLights {
 
     /** Client tick: follows the displays and starts surface rebuilds. */
     public static void tick(Minecraft mc) {
+        LumenConfig.saveIfDirty();
         ClientLevel level = mc.level;
         LumenConfig cfg = LumenConfig.get();
         if (level == null || !cfg.enabled || !DreamDisplays.isAvailable()) {
@@ -88,8 +89,11 @@ public final class ScreenLights {
         long now = System.nanoTime();
         float dt = lastFrameNs == 0 ? 0.016f : Math.min(0.25f, (now - lastFrameNs) / 1e9f);
         lastFrameNs = now;
+        LumenConfig cfg = LumenConfig.get();
         for (ScreenLight light : LIGHTS.values()) {
-            light.setTarget(ON.getOrDefault(light.id, false), BRIGHTNESS.getOrDefault(light.id, 1f));
+            float strength = cfg.displayLight(light.id);
+            light.setTarget(ON.getOrDefault(light.id, false) && strength > 0,
+                    BRIGHTNESS.getOrDefault(light.id, 1f) * strength);
             light.smooth(dt);
         }
     }

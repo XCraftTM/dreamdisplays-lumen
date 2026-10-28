@@ -7,6 +7,9 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 /** Settings in config/ddlumen.json. Missing or broken values fall back to the defaults. */
 public final class LumenConfig {
@@ -14,6 +17,7 @@ public final class LumenConfig {
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("ddlumen.json");
 
     private static LumenConfig current = new LumenConfig();
+    private static boolean dirty;
 
     /** Master switch. */
     public boolean enabled = true;
@@ -53,6 +57,9 @@ public final class LumenConfig {
     public boolean coloredLightWithShaders = true;
     /** Strength of the colored light while a shader pack is active. */
     public float intensityWithShaders = 1.5f;
+    /** Light strength per display (display id to 0–2, 1 when missing), set in the display menu. */
+    public Map<String, Float> displayLight = new HashMap<>();
+
     /** Iris program the colored light is drawn with while a shader pack is active. */
     public String irisProgram = "NONE";
 
@@ -63,6 +70,27 @@ public final class LumenConfig {
             case "off" -> false;
             default -> shaderPackInUse;
         };
+    }
+
+    /** The display's own light strength (0 = off, 1 = normal, 2 = double). */
+    public float displayLight(UUID display) {
+        Float v = displayLight.get(display.toString());
+        return v == null ? 1f : v;
+    }
+
+    /** Sets the display's light strength; written to disk on the next client tick. */
+    public void setDisplayLight(UUID display, float value) {
+        value = Math.clamp(value, 0f, 2f);
+        if (Math.abs(value - 1f) < 0.001f) displayLight.remove(display.toString());
+        else displayLight.put(display.toString(), value);
+        dirty = true;
+    }
+
+    /** Writes pending changes (client tick). */
+    public static void saveIfDirty() {
+        if (!dirty) return;
+        dirty = false;
+        save();
     }
 
     public static LumenConfig get() {
@@ -103,6 +131,8 @@ public final class LumenConfig {
         blockLightStrength = clamp(blockLightStrength, 0f, 100f);
         blockLightMax = Math.clamp(blockLightMax, 0, 15);
         if (irisProgram == null) irisProgram = "NONE";
+        if (displayLight == null) displayLight = new HashMap<>();
+        displayLight.replaceAll((id, v) -> v == null || v.isNaN() ? 1f : Math.clamp(v, 0f, 2f));
         if (!"always".equals(blockLight) && !"off".equals(blockLight)) blockLight = "shaders";
         return this;
     }
