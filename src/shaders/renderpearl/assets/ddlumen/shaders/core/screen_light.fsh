@@ -6,7 +6,7 @@
 #include <minecraft:oit.glsl>
 
 // light = vertex rgb * vertex alpha * HEADROOM (keep in sync with LightRenderer.HEADROOM)
-#define HEADROOM 2.0
+#define HEADROOM 4.0
 
 uniform sampler2D Sampler0;
 

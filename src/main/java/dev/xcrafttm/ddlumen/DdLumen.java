@@ -90,6 +90,12 @@ public final class DdLumen implements ClientModInitializer {
                     ctx.getSource().sendFeedback(Texts.translatable("ddlumen.command.intensity", value));
                     return 1;
                 })))
+                .then(literal("saturation").then(argument("value", FloatArgumentType.floatArg(0, 4)).executes(ctx -> {
+                    LumenConfig.get().colorSaturation = FloatArgumentType.getFloat(ctx, "value");
+                    LumenConfig.save();
+                    ctx.getSource().sendFeedback(Texts.translatable("ddlumen.command.saturation", LumenConfig.get().colorSaturation));
+                    return 1;
+                })))
                 .then(literal("toggle").executes(ctx -> {
                     LumenConfig.get().enabled = !LumenConfig.get().enabled;
                     LumenConfig.save();

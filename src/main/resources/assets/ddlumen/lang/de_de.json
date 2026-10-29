@@ -10,5 +10,10 @@
   "ddlumen.menu.light.tooltip.body": "Wie stark dieses Display den Raum in den Farben seines Videos beleuchtet. Nur für dich.",
   "ddlumen.menu.light.tooltip.value": "Raumlicht: %s",
   "ddlumen.command.status.display": "Display %s: %s | Bilder %s (%s, zuletzt vor %s s), unbenutzt %s (%s) | Licht %s | Flächen %s",
-  "ddlumen.command.status.render": "Shaderpack: %s | im letzten Frame gezeichnet: %s Displays, %s Flächen | Durchgänge nach dem Pack: %s | andere Uploads: %s"
+  "ddlumen.command.status.render": "Shaderpack: %s | im letzten Frame gezeichnet: %s Displays, %s Flächen | Durchgänge nach dem Pack: %s | andere Uploads: %s",
+  "ddlumen.menu.color": "Lichtfarbe",
+  "ddlumen.menu.color.tooltip.title": "Lichtfarbe",
+  "ddlumen.menu.color.tooltip.body": "Wie farbig das Licht dieses Displays ist. 0 % ist weißes Licht, über 100 % werden die Farben kräftiger. Nur für dich.",
+  "ddlumen.menu.color.tooltip.value": "Lichtfarbe: %s",
+  "ddlumen.command.saturation": "Dream Displays Lumen: Lichtfarbe %s."
 }

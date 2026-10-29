@@ -15,8 +15,6 @@ import net.minecraft.core.BlockPos;
  * LambDynamicLights calls this from its own threads, so it only reads the published zone light.
  */
 final class ScreenLightBehavior implements DynamicLightBehavior {
-    /** At most this often the light counts as changed (every change rebuilds the chunk sections around it). */
-    private static final long MIN_CHANGE_INTERVAL_NS = 150_000_000L;
 
     private final ScreenLight light;
     private final ScreenGeometry geometry;
@@ -77,7 +75,8 @@ final class ScreenLightBehavior implements DynamicLightBehavior {
         int zones = zonesX * zonesY;
         if (radiance.length != zones * 3) return false;
         long now = System.nanoTime();
-        if (now - lastChangeNs < MIN_CHANGE_INTERVAL_NS) return false;
+        // every change rebuilds the chunk sections around the display: not more often than set
+        if (now - lastChangeNs < LumenConfig.get().blockLightIntervalMs * 1_000_000L) return false;
         if (lastLuminance.length != zones) lastLuminance = new float[zones];
         boolean changed = false;
         for (int z = 0; z < zones; z++) {

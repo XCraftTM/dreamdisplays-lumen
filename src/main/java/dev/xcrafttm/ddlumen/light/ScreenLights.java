@@ -105,7 +105,7 @@ public final class ScreenLights {
         for (ScreenLight light : LIGHTS.values()) {
             float strength = cfg.displayLight(light.id);
             light.setTarget(strength > 0 ? MODE.getOrDefault(light.id, Mode.OFF) : Mode.OFF,
-                    BRIGHTNESS.getOrDefault(light.id, 1f) * strength);
+                    BRIGHTNESS.getOrDefault(light.id, 1f) * strength, cfg.colorSaturation * cfg.displayColor(light.id));
             light.smooth(dt);
         }
     }

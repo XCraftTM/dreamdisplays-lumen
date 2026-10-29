@@ -10,5 +10,10 @@
   "ddlumen.menu.light.tooltip.body": "How strongly this display lights the room in the colors of its video. Only for you.",
   "ddlumen.menu.light.tooltip.value": "Room light: %s",
   "ddlumen.command.status.display": "Display %s: %s | frames %s (%s, last %s s ago), unused %s (%s) | light %s | faces %s",
-  "ddlumen.command.status.render": "Shader pack: %s | drawn last frame: %s displays, %s faces | passes after the pack: %s | other uploads: %s"
+  "ddlumen.command.status.render": "Shader pack: %s | drawn last frame: %s displays, %s faces | passes after the pack: %s | other uploads: %s",
+  "ddlumen.menu.color": "Light color",
+  "ddlumen.menu.color.tooltip.title": "Light color",
+  "ddlumen.menu.color.tooltip.body": "How colorful the light of this display is. 0% is white light, above 100% the colors get stronger. Only for you.",
+  "ddlumen.menu.color.tooltip.value": "Light color: %s",
+  "ddlumen.command.saturation": "Dream Displays Lumen: light color %s."
 }

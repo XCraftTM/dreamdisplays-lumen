@@ -20,10 +20,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 /**
- * Adds a "Room light" row to Dream Displays' display menu, right below its brightness: this display's light
- * strength (0 % turns it off), built from Dream Displays' own slider and reset button so it looks like the rest.
+ * Adds "Room light" and "Light color" rows to Dream Displays' display menu, right below its brightness: this
+ * display's light strength (0 % turns it off) and how colorful its light is (0 % = white light), built from Dream
+ * Displays' own slider and reset button so they look like the rest.
  */
 @Mixin(value = DisplayMenu.class, remap = false)
 public abstract class DisplayMenuMixin extends UiScreenBase {
@@ -39,41 +41,49 @@ public abstract class DisplayMenuMixin extends UiScreenBase {
     }
 
     @ModifyReturnValue(method = "settingsRows", at = @At("RETURN"), require = 0)
-    private List<SettingsSection.Row> ddlumen$addLightRow(List<SettingsSection.Row> rows) {
+    private List<SettingsSection.Row> ddlumen$addLightRows(List<SettingsSection.Row> rows) {
         UUID id = displayScreen.getUuid();
         LumenConfig cfg = LumenConfig.get();
-        ValueSlider slider = addUi(new ValueSlider(
-                cfg.displayLight(id) / SCALE,
-                value -> percent(value),
-                true,
-                0.025,
-                value -> {
-                    LumenConfig.get().setDisplayLight(id, (float) (value * SCALE));
-                    return Unit.INSTANCE;
-                }));
-        IconButton reset = addUi(new IconButton("refresh", () -> {
-            LumenConfig.get().setDisplayLight(id, 1f);
-            slider.setValue(1 / SCALE);
-            return Unit.INSTANCE;
-        }));
-        reset.setEnabledWhen(() -> Math.abs(slider.getValue() * SCALE - 1) > 0.01);
-        reset.setVisibleWhen(() -> !displayScreen.getErrored());
-        slider.setVisibleWhen(() -> !displayScreen.getErrored());
-
-        SettingsSection.Row row = new SettingsSection.Row("ddlumen.menu.light", slider, reset, 0, () -> List.of(
-                Texts.translatable("ddlumen.menu.light.tooltip.title").withStyle(s -> s.withColor(ChatFormatting.WHITE).withBold(true)),
-                Texts.translatable("ddlumen.menu.light.tooltip.body").withStyle(ChatFormatting.GRAY),
-                Texts.literal(""),
-                Texts.translatable("ddlumen.menu.light.tooltip.value", percent(slider.getValue()))
-                        .withStyle(ChatFormatting.GOLD)));
+        SettingsSection.Row light = ddlumen$row("ddlumen.menu.light", cfg.displayLight(id),
+                value -> LumenConfig.get().setDisplayLight(id, value));
+        SettingsSection.Row color = ddlumen$row("ddlumen.menu.color", cfg.displayColor(id),
+                value -> LumenConfig.get().setDisplayColor(id, value));
 
         List<SettingsSection.Row> out = new ArrayList<>(rows);
         int at = out.size();
         for (int i = 0; i < out.size(); i++) {
             if (out.get(i).getLabelKey().endsWith("brightness")) at = i + 1;
         }
-        out.add(Math.min(at, out.size()), row);
+        at = Math.min(at, out.size());
+        out.add(at, light);
+        out.add(at + 1, color);
         return out;
+    }
+
+    /** A row with Dream Displays' slider (0–200 %, 100 % in the middle) and reset button, under [key]. */
+    private SettingsSection.Row ddlumen$row(String key, float initial, Consumer<Float> set) {
+        ValueSlider slider = addUi(new ValueSlider(
+                initial / SCALE,
+                value -> percent(value),
+                true,
+                0.025,
+                value -> {
+                    set.accept((float) (value * SCALE));
+                    return Unit.INSTANCE;
+                }));
+        IconButton reset = addUi(new IconButton("refresh", () -> {
+            set.accept(1f);
+            slider.setValue(1 / SCALE);
+            return Unit.INSTANCE;
+        }));
+        reset.setEnabledWhen(() -> Math.abs(slider.getValue() * SCALE - 1) > 0.01);
+        reset.setVisibleWhen(() -> !displayScreen.getErrored());
+        slider.setVisibleWhen(() -> !displayScreen.getErrored());
+        return new SettingsSection.Row(key, slider, reset, 0, () -> List.of(
+                Texts.translatable(key + ".tooltip.title").withStyle(s -> s.withColor(ChatFormatting.WHITE).withBold(true)),
+                Texts.translatable(key + ".tooltip.body").withStyle(ChatFormatting.GRAY),
+                Texts.literal(""),
+                Texts.translatable(key + ".tooltip.value", percent(slider.getValue())).withStyle(ChatFormatting.GOLD)));
     }
 
     private static Component percent(double sliderValue) {

@@ -125,11 +125,18 @@ public final class ScreenLight {
      * Sets what the light should become: the latest frame times [brightness]; while the video loads (or no frame
      * arrived yet) the glow of Dream Displays' loading screen; otherwise dark.
      */
-    void setTarget(ScreenLights.Mode mode, float brightness) {
+    void setTarget(ScreenLights.Mode mode, float brightness, float saturation) {
         FrameCapture.ZoneFrame frame = mode == ScreenLights.Mode.VIDEO ? FrameCapture.latest(id) : null;
         if (frame != null && frame.zonesX() == zonesX && frame.zonesY() == zonesY) {
             float[] rgb = frame.rgb();
-            for (int i = 0; i < target.length; i++) target[i] = rgb[i] * brightness;
+            for (int i = 0; i < target.length; i += 3) {
+                // push each zone's color away from its own gray (luminance stays the same)
+                float r = rgb[i], g = rgb[i + 1], b = rgb[i + 2];
+                float y = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+                target[i] = Math.max(0f, y + (r - y) * saturation) * brightness;
+                target[i + 1] = Math.max(0f, y + (g - y) * saturation) * brightness;
+                target[i + 2] = Math.max(0f, y + (b - y) * saturation) * brightness;
+            }
         } else if (mode != ScreenLights.Mode.OFF && LumenConfig.get().loadingLight > 0) {
             loadingGlow(brightness * LumenConfig.get().loadingLight);
         } else {
@@ -155,15 +162,19 @@ public final class ScreenLight {
 
     /** Moves the shown light toward the target. */
     void smooth(float dtSeconds) {
-        int ms = LumenConfig.get().smoothingMs;
-        float k = ms <= 0 ? 1f : (float) (1 - Math.exp(-dtSeconds * 1000.0 / ms));
+        // quick to brighten (flashes come through), calmer to dim
+        float rise = follow(dtSeconds, LumenConfig.get().riseMs), fall = follow(dtSeconds, LumenConfig.get().smoothingMs);
         boolean any = false;
         for (int i = 0; i < radiance.length; i++) {
-            radiance[i] += (target[i] - radiance[i]) * k;
+            radiance[i] += (target[i] - radiance[i]) * (target[i] > radiance[i] ? rise : fall);
             if (radiance[i] > 1e-4f) any = true;
         }
         lit = any;
         published = radiance.clone();
+    }
+
+    private static float follow(float dtSeconds, int ms) {
+        return ms <= 0 ? 1f : (float) (1 - Math.exp(-dtSeconds * 1000.0 / ms));
     }
 
     /** Starts a rebuild of the lit surfaces when the region changed a while ago. Client thread. */

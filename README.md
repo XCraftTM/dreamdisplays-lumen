@@ -42,9 +42,14 @@ Complementary Reimagined.
 
 ## Settings
 
-**In the display menu:** Dream Displays' menu of each display gets a **Room light** row below *Brightness*:
-how strongly this display lights the room, 0–200 % (0 % turns its light off), with a reset button like the other
-rows. It is stored per display and only for you, like volume and brightness (`displayLight` in the file below).
+**In the display menu:** Dream Displays' menu of each display gets two rows below *Brightness*: **Room light**,
+how strongly this display lights the room (0 % turns it off), and **Light color**, how colorful its light is (0 % is
+white light, above 100 % the colors get stronger). Both go from 0 to 200 % and have a reset button like the other
+rows. They are stored per display and only for you, like volume and brightness (`displayLight` and `displayColor`
+in the file below).
+
+Files from an older version (`configVersion` below 2) get the current light strength, color, smoothing and range
+when loaded; switches and the per-display settings stay.
 
 **Everything else** is in `config/ddlumen.json` (created on first start; reload with `/ddlumen reload`):
 
@@ -56,12 +61,15 @@ rows. It is stored per display and only for you, like volume and brightness (`di
 | `range` | `20` | how far in front of a display the light reaches, in blocks |
 | `zonesX`, `zonesY` | `4`, `3` | color grid taken from the picture |
 | `loadingLight` | `1.0` | light while a video loads (Dream Displays' loading screen), 0 = none |
-| `smoothingMs` | `90` | how fast the light follows the video (higher is calmer) |
+| `colorSaturation` | `1.6` | how colorful the light is (1 = the picture's colors, more = stronger; `/ddlumen saturation`) |
+| `smoothingMs` | `0` | how slowly the light dims (0 = it changes with every video frame) |
+| `riseMs` | `0` | how slowly the light brightens (0 = with every video frame) |
 | `shadows` | `true` | blocks cast shadows |
 | `maxDistance` | `96` | displays farther from the camera give no light |
 | `maxFaces` | `40000` | most lit block faces per display (the brightest are kept) |
 | `blockLight` | `shaders` | block light through LambDynamicLights: `shaders` (only while a shader pack is active), `always` or `off`. Vanilla block light is warm-tinted and pulls the colors toward orange, so it is off without shaders by default |
 | `blockLightStrength` | `5.0` | how bright the block light gets |
+| `blockLightIntervalMs` | `100` | shortest time between block light updates (each one rebuilds chunk sections) |
 | `blockLightMax` | `13` | highest block light level |
 | `coloredLightWithShaders` | `true` | colored light while a shader pack is active |
 | `intensityWithShaders` | `1.5` | strength of the colored light while a shader pack is active |

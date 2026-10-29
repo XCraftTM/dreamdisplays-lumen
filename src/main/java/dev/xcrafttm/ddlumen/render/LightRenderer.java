@@ -29,7 +29,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class LightRenderer {
     /** Vertex colors carry light up to this much (alpha scales it), see screen_light.fsh. */
-    private static final float HEADROOM = 2f;
+    private static final float HEADROOM = 4f;
     /** Light below this is not drawn; it is subtracted from all light, so nothing jumps at the cut. */
     private static final float MIN_LIGHT = 1f / 16384f;
     private static final float MIN_SHOWN = (float) Math.sqrt(MIN_LIGHT);
@@ -154,8 +154,15 @@ public final class LightRenderer {
             int tint = s.tints[q];
             float tr = ((tint >> 16) & 0xFF) / 255f, tg = ((tint >> 8) & 0xFF) / 255f, tb = (tint & 0xFF) / 255f;
             for (int v = 0; v < 4; v++) {
-                // the frame holds gamma-encoded colors: in the dark, adding E of linear light shows as about sqrt(E)
-                float r = shown(rgb[v * 3]) * tr, g = shown(rgb[v * 3 + 1]) * tg, b = shown(rgb[v * 3 + 2]) * tb;
+                // the frame holds gamma-encoded colors: in the dark, adding E of linear light shows as about sqrt(E).
+                // The strongest channel decides how much is shown and the others keep their share, so colors stay
+                // as saturated as in the picture (a square root per channel would wash them out).
+                float r = rgb[v * 3] * tr, g = rgb[v * 3 + 1] * tg, b = rgb[v * 3 + 2] * tb;
+                float peak = Math.max(r, Math.max(g, b));
+                float shownScale = peak > 0 ? shown(peak) / peak : 0f;
+                r *= shownScale;
+                g *= shownScale;
+                b *= shownScale;
                 float a = 1f, scale = 1f;
                 if (!plainColor) {
                     float m = Math.max(r, Math.max(g, b));
