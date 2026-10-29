@@ -70,7 +70,7 @@ final class SurfaceBuilder {
                             int maxFaces, Object models) {
         int zones = zonesX * zonesY;
         double[] centers = g.zoneCenters(zonesX, zonesY);
-        double zoneArea = g.area() / zones;
+        double[] rects = g.zoneCorners(zonesX, zonesY);
 
         FloatArrayList positions = new FloatArrayList();
         FloatArrayList uvs = new FloatArrayList();
@@ -110,7 +110,7 @@ final class SurfaceBuilder {
                                 double[] n = normal(corner, facing);
                                 float sum = 0;
                                 for (int v = 0; v < 4; v++) {
-                                    sum += cornerWeights(s, g, centers, zones, zoneArea, range, shadows, corner, v, n, w, v * zones);
+                                    sum += cornerWeights(s, g, centers, rects, zones, range, shadows, corner, v, n, w, v * zones);
                                 }
                                 if (sum < MIN_WEIGHT) return;
 
@@ -217,11 +217,13 @@ final class SurfaceBuilder {
     }
 
     /**
-     * Light corner [v] gets from each zone, written to [out] from [at]: each zone is a small Lambertian emitter,
-     * {@code area * cos(emitter) * cos(receiver) / (pi * distance^2)}, so a white picture filling the whole view of a
-     * surface gives it 1 (its full color). Returns the sum.
+     * Light corner [v] gets from each zone, written to [out] from [at]: each zone is a Lambertian rectangle, and the
+     * corner gets its form factor (the share of the corner's view the zone covers, cosine-weighted), so a white
+     * picture filling the whole view of a surface gives it 1 (its full color). Exact also right at the picture,
+     * where a zone seen as one point in its middle would light a floor in front of a standing screen hardly at all.
+     * Shadows are tested toward the zone's middle. Returns the sum.
      */
-    private static float cornerWeights(Snapshot s, ScreenGeometry g, double[] centers, int zones, double zoneArea,
+    private static float cornerWeights(Snapshot s, ScreenGeometry g, double[] centers, double[] rects, int zones,
                                        int range, boolean shadows, double[] c, int v, double[] n, float[] out, int at) {
         // nudge the corner onto the face, off its edges, so rays do not start inside the neighbors
         double qx = (c[0] + c[3] + c[6] + c[9]) * 0.25, qy = (c[1] + c[4] + c[7] + c[10]) * 0.25, qz = (c[2] + c[5] + c[8] + c[11]) * 0.25;
@@ -237,22 +239,62 @@ final class SurfaceBuilder {
                 continue;
             }
             double tx = centers[z * 3], ty = centers[z * 3 + 1], tz = centers[z * 3 + 2];
-            double dx = px - tx, dy = py - ty, dz = pz - tz;
-            double cosEmit = dx * g.nx() + dy * g.ny() + dz * g.nz();
-            double cosRecv = -(dx * n[0] + dy * n[1] + dz * n[2]);
-            if (cosEmit <= 0 || cosRecv <= 0) {
+            // the picture only shines forward
+            if ((px - g.cx()) * g.nx() + (py - g.cy()) * g.ny() + (pz - g.cz()) * g.nz() <= 0) {
                 out[at + z] = 0;
                 continue;
             }
-            double dist2 = dx * dx + dy * dy + dz * dz;
-            // the zone's own size keeps the light finite right in front of it
-            double weight = fade * zoneArea * (cosEmit / Math.sqrt(dist2)) * (cosRecv / Math.sqrt(dist2))
-                    / (Math.PI * (dist2 + zoneArea * 0.25));
+            double weight = fade * formFactor(rects, z * 12, px, py, pz, n);
             if (weight > 1e-6 && shadows && !visible(s, px, py, pz, tx, ty, tz)) weight = 0;
             out[at + z] = (float) weight;
             sum += (float) weight;
         }
         return sum;
+    }
+
+    /**
+     * Form factor from a point with normal [n] to the quad at [rects] from [k]: Lambert's formula over the edges of
+     * the part of the quad above the point's horizon, {@code |sum(angle_i * n . unit(r_i x r_i+1))| / 2 pi}.
+     */
+    static double formFactor(double[] rects, int k, double px, double py, double pz, double[] n) {
+        // the quad relative to the point, cut at the point's horizon (a quad partly behind a wall lights it partly)
+        double[] poly = new double[8 * 3];
+        int count = 0;
+        for (int i = 0; i < 4; i++) {
+            int a = k + i * 3, b = k + ((i + 1) & 3) * 3;
+            double ax = rects[a] - px, ay = rects[a + 1] - py, az = rects[a + 2] - pz;
+            double bx = rects[b] - px, by = rects[b + 1] - py, bz = rects[b + 2] - pz;
+            double ha = ax * n[0] + ay * n[1] + az * n[2], hb = bx * n[0] + by * n[1] + bz * n[2];
+            if (ha >= 0) {
+                poly[count * 3] = ax;
+                poly[count * 3 + 1] = ay;
+                poly[count * 3 + 2] = az;
+                count++;
+            }
+            if ((ha >= 0) != (hb >= 0)) {
+                double t = ha / (ha - hb);
+                poly[count * 3] = ax + (bx - ax) * t;
+                poly[count * 3 + 1] = ay + (by - ay) * t;
+                poly[count * 3 + 2] = az + (bz - az) * t;
+                count++;
+            }
+        }
+        if (count < 3) return 0;
+        double sum = 0;
+        for (int i = 0; i < count; i++) {
+            int a = i * 3, b = ((i + 1) % count) * 3;
+            double la = Math.sqrt(poly[a] * poly[a] + poly[a + 1] * poly[a + 1] + poly[a + 2] * poly[a + 2]);
+            double lb = Math.sqrt(poly[b] * poly[b] + poly[b + 1] * poly[b + 1] + poly[b + 2] * poly[b + 2]);
+            if (la < 1e-9 || lb < 1e-9) continue;
+            double ax = poly[a] / la, ay = poly[a + 1] / la, az = poly[a + 2] / la;
+            double bx = poly[b] / lb, by = poly[b + 1] / lb, bz = poly[b + 2] / lb;
+            double cx = ay * bz - az * by, cy = az * bx - ax * bz, cz = ax * by - ay * bx;
+            double cl = Math.sqrt(cx * cx + cy * cy + cz * cz);
+            if (cl < 1e-12) continue;
+            double angle = Math.acos(Clamp.of(ax * bx + ay * by + az * bz, -1, 1));
+            sum += angle * (cx * n[0] + cy * n[1] + cz * n[2]) / cl;
+        }
+        return Math.min(1, Math.abs(sum) / (2 * Math.PI));
     }
 
     /** 1 up to 70 % of the range, then smoothly down to 0 at the range. */

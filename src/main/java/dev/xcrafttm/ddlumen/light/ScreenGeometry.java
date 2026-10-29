@@ -61,6 +61,31 @@ public record ScreenGeometry(
         return out;
     }
 
+    /**
+     * The four corners of each zone (x, y, z per corner, 12 values per zone, row-major from the top left like
+     * {@link #zoneCenters}), going around the zone, on the picture itself: a lit face's corners are nudged a hundredth
+     * of a block off their edges, so zones as far in front of the picture would lie in their plane and give the row
+     * of blocks along the picture no light at all.
+     */
+    public double[] zoneCorners(int zonesX, int zonesY) {
+        double[] out = new double[zonesX * zonesY * 12];
+        for (int j = 0; j < zonesY; j++) {
+            double t0 = (0.5 - (double) j / zonesY) * height, t1 = (0.5 - (j + 1.0) / zonesY) * height;
+            for (int i = 0; i < zonesX; i++) {
+                double s0 = ((double) i / zonesX - 0.5) * width, s1 = ((i + 1.0) / zonesX - 0.5) * width;
+                double[][] st = {{s0, t0}, {s1, t0}, {s1, t1}, {s0, t1}};
+                int k = (j * zonesX + i) * 12;
+                for (int c = 0; c < 4; c++) {
+                    double s = st[c][0], t = st[c][1];
+                    out[k + c * 3] = cx + ux * s + vx * t;
+                    out[k + c * 3 + 1] = cy + uy * s + vy * t;
+                    out[k + c * 3 + 2] = cz + uz * s + vz * t;
+                }
+            }
+        }
+        return out;
+    }
+
     /** Blocks that can receive light: everything up to [range] blocks from the picture, in front of it. */
     public BlockPos[] region(int range) {
         double halfU = width / 2.0 + range, halfV = height / 2.0 + range;
