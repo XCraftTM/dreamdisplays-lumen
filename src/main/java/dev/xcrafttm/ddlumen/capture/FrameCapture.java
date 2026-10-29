@@ -30,6 +30,9 @@ public final class FrameCapture {
     private static final Map<UUID, Stats> STATS = new ConcurrentHashMap<>();
     /** Frames uploaded outside a display's upload (popouts, previews): not ours. */
     private static long foreignUploads;
+    /** When another mod last handed in a frame of a display (see LumenFrames); those win over its own video. */
+    private static final Map<UUID, Long> EXTERNAL = new ConcurrentHashMap<>();
+    private static final long RECENT_NS = 500_000_000L;
 
     /** What arrived for one display, for /ddlumen status and the log. */
     public static final class Stats {
@@ -59,11 +62,29 @@ public final class FrameCapture {
     public static void forget(UUID display) {
         FRAMES.remove(display);
         STATS.remove(display);
+        EXTERNAL.remove(display);
     }
 
     public static void clear() {
         FRAMES.clear();
         STATS.clear();
+        EXTERNAL.clear();
+    }
+
+    /** An RGBA frame of a picture another mod draws on the display (see LumenFrames). */
+    public static void captureExternal(UUID display, ByteBuffer rgba, int width, int height) {
+        EXTERNAL.put(display, System.nanoTime());
+        interleaved(display, rgba, width, height, 4, "outside picture ");
+    }
+
+    public static void endExternal(UUID display) {
+        if (EXTERNAL.remove(display) != null) FRAMES.remove(display);
+    }
+
+    /** Whether another mod handed in frames of [display] within the last half second. */
+    public static boolean external(UUID display, long nowNs) {
+        Long last = EXTERNAL.get(display);
+        return last != null && nowNs - last < RECENT_NS;
     }
 
     public static Stats stats(UUID display) {
@@ -73,7 +94,7 @@ public final class FrameCapture {
     /** Whether frames of [display] arrived within the last half second. */
     public static boolean receiving(UUID display, long nowNs) {
         Stats st = STATS.get(display);
-        return st != null && st.frames > 0 && nowNs - st.lastFrameNs < 500_000_000L;
+        return st != null && st.frames > 0 && nowNs - st.lastFrameNs < RECENT_NS;
     }
 
     public static long foreignUploads() {
@@ -106,6 +127,12 @@ public final class FrameCapture {
             foreignUploads++;
             return;
         }
+        // another mod's picture covers the video
+        if (external(display, System.nanoTime())) return;
+        interleaved(display, src, width, height, bytesPerPixel, "");
+    }
+
+    private static void interleaved(UUID display, ByteBuffer src, int width, int height, int bytesPerPixel, String what) {
         if (bytesPerPixel < 3 || width <= 0 || height <= 0) {
             skipped(display, "RGB " + width + "x" + height + ", " + bytesPerPixel + " bytes per pixel");
             return;
@@ -143,7 +170,7 @@ public final class FrameCapture {
                 rgb[k + 2] = b * n;
             }
         }
-        captured(display, "RGB " + width + "x" + height, new ZoneFrame(zx, zy, rgb, System.nanoTime()));
+        captured(display, what + "RGB " + width + "x" + height, new ZoneFrame(zx, zy, rgb, System.nanoTime()));
     }
 
     /** An I420 frame: the Y plane, then the U and V planes at half resolution. BT.709, limited range. */
@@ -153,6 +180,7 @@ public final class FrameCapture {
             foreignUploads++;
             return;
         }
+        if (external(display, System.nanoTime())) return;
         if (width <= 0 || height <= 0) {
             skipped(display, "YUV " + width + "x" + height);
             return;
