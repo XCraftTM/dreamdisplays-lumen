@@ -15,5 +15,8 @@
   "ddlumen.menu.color.tooltip.title": "Light color",
   "ddlumen.menu.color.tooltip.body": "How colorful the light of this display is. 0% is white light, above 100% the colors get stronger. Only for you.",
   "ddlumen.menu.color.tooltip.value": "Light color: %s",
-  "ddlumen.command.saturation": "Dream Displays Lumen: light color %s."
+  "ddlumen.command.saturation": "Dream Displays Lumen: light color %s.",
+  "ddlumen.command.blocklight.shaders": "Dream Displays Lumen: block light (LambDynamicLights) only with shaders.",
+  "ddlumen.command.blocklight.always": "Dream Displays Lumen: block light (LambDynamicLights) always.",
+  "ddlumen.command.blocklight.off": "Dream Displays Lumen: block light (LambDynamicLights) off."
 }

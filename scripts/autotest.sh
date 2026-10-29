@@ -5,6 +5,8 @@
 #   MC=1.21.1 scripts/autotest.sh       # another Minecraft version (default 26.3)
 #   scripts/autotest.sh [shaders]      # "shaders" adds Sodium + Iris (and the pack in run/autotest/shaderpacks)
 #   VIDEO_URL=https://youtu.be/... SEEK=45000 scripts/autotest.sh [shaders]   # any video: shot pairs every few seconds
+#   MODE=flicker scripts/autotest.sh shaders   # pauses on white, bursts of shots per setup (all / nocolor / noblock)
+#   MODE=menu scripts/autotest.sh             # a shot of Dream Displays' menu with the Lumen rows
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # the Minecraft version to test (see versions/); its flat world comes from scripts/makeworld.sh
@@ -17,7 +19,7 @@ SHADERS=false
 PREFIX=lumen
 if [ "${1:-}" = shaders ]; then SHADERS=true; PREFIX=lumen-shaders; fi
 EXTRA=()
-if [ "${MODE:-}" = menu ]; then EXTRA=(-PtestMode=menu); PREFIX=$PREFIX-menu; fi
+if [ -n "${MODE:-}" ]; then EXTRA=(-PtestMode=$MODE); PREFIX=$PREFIX-$MODE; fi
 if [ -n "${VIDEO_URL:-}" ]; then
   EXTRA=(-PtestMode=video "-PtestVideo=$VIDEO_URL" "-PtestSeek=${SEEK:-0}")
   PREFIX=$PREFIX-video

@@ -67,7 +67,7 @@ when loaded; switches and the per-display settings stay.
 | `shadows` | `true` | blocks cast shadows |
 | `maxDistance` | `96` | displays farther from the camera give no light |
 | `maxFaces` | `40000` | most lit block faces per display (the brightest are kept) |
-| `blockLight` | `shaders` | block light through LambDynamicLights: `shaders` (only while a shader pack is active), `always` or `off`. Vanilla block light is warm-tinted and pulls the colors toward orange, so it is off without shaders by default |
+| `blockLight` | `shaders` | block light through LambDynamicLights: `shaders` (only while a shader pack is active), `always` or `off` (`/ddlumen blocklight`). Vanilla block light is warm-tinted and pulls the colors toward orange, so it is off without shaders by default |
 | `blockLightStrength` | `5.0` | how bright the block light gets |
 | `blockLightIntervalMs` | `100` | shortest time between block light updates (each one rebuilds chunk sections) |
 | `blockLightMax` | `13` | highest block light level |
@@ -96,7 +96,10 @@ last frame. The log notes the first frame of each display and every new reason a
 5. The **Room light** row is added to `DisplayMenu.settingsRows()` with Dream Displays' own slider and reset button;
    the menu layout gets one row more height (`MenuLayout.compute`).
 6. With a shader pack the same faces are drawn in a render pass of their own on the finished picture, right after
-   Iris' final pass (`IrisRenderingPipeline.finalizeLevelRendering`).
+   Iris' final pass (`IrisRenderingPipeline.finalizeLevelRendering`). Packs with TAA (e.g. Solas) draw the scene
+   shifted by part of a pixel each frame, which changes its depth a lot on surfaces seen at a flat angle; so each
+   corner of a lit face is moved toward the camera along its view ray by the depth change of about one pixel there.
+   It stays on the same pixels, and the depth test no longer fails on some frames (flicker).
 
 ## Building
 

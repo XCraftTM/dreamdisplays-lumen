@@ -92,6 +92,10 @@ public final class TestDriver implements ClientModInitializer {
             menuTick(mc, now);
             return;
         }
+        if (mode.equals("flicker")) {
+            flickerTick(mc, now);
+            return;
+        }
         if (screen(mc) != null) return;
 
         if (screen(mc) != null) return;
@@ -155,6 +159,43 @@ public final class TestDriver implements ClientModInitializer {
             nextShotAt = now + 3500;
             if (videoShots >= VIDEO_SHOTS) doneAt = now;
         }
+    }
+
+    private static final String[] FLICKER_SETUPS = {"all", "nocolor", "noblock"};
+    private static final int FLICKER_SHOTS = 8;
+    private long pausedAt, flickerNextAt;
+    private int flickerSetup, flickerShot;
+
+    /**
+     * Pauses the display on the white part and takes bursts of shots of the still picture: with everything, without
+     * the colored light, and without the raised block light. Any difference inside one burst is flicker.
+     */
+    private void flickerTick(Minecraft mc, long now) {
+        if (screen(mc) != null) return;
+        ScreenLight light = ScreenLights.all().stream().findFirst().orElse(null);
+        if (light == null) return;
+        if (pausedAt == 0) {
+            FrameCapture.ZoneFrame frame = FrameCapture.latest(light.id);
+            if (frame == null || classify(frame) != Phase.WHITE || dev.xcrafttm.ddlumen.render.LightRenderer.lastFaces == 0) return;
+            for (Display d : DreamDisplays.getDisplays()) TestScene.LOG.info("Pause: {}", d.pause());
+            pausedAt = now;
+            flickerNextAt = now + 3000;
+            return;
+        }
+        if (now < flickerNextAt) return;
+        shot(mc, "flicker-" + FLICKER_SETUPS[flickerSetup] + "-" + flickerShot);
+        flickerNextAt = now + 150;
+        if (++flickerShot < FLICKER_SHOTS) return;
+        flickerShot = 0;
+        if (++flickerSetup == FLICKER_SETUPS.length) {
+            doneAt = now;
+            return;
+        }
+        LumenConfig cfg = LumenConfig.get();
+        cfg.coloredLight = !FLICKER_SETUPS[flickerSetup].equals("nocolor");
+        cfg.blockLight = FLICKER_SETUPS[flickerSetup].equals("noblock") ? "off" : "shaders";
+        TestScene.LOG.info("Flicker setup {}", FLICKER_SETUPS[flickerSetup]);
+        flickerNextAt = now + 3000;
     }
 
     private long menuOpenedAt;

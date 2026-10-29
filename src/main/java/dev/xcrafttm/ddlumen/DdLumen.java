@@ -73,6 +73,20 @@ public final class DdLumen implements ClientModInitializer {
         //#endif
     }
 
+    /** When displays raise the block light through LambDynamicLights: shaders, always or off. */
+    private static LiteralArgumentBuilder<FabricClientCommandSource> blockLightCommand() {
+        LiteralArgumentBuilder<FabricClientCommandSource> command = literal("blocklight");
+        for (String mode : new String[]{"shaders", "always", "off"}) {
+            command.then(literal(mode).executes(ctx -> {
+                LumenConfig.get().blockLight = mode;
+                LumenConfig.save();
+                ctx.getSource().sendFeedback(Texts.translatable("ddlumen.command.blocklight." + mode));
+                return 1;
+            }));
+        }
+        return command;
+    }
+
     private static LiteralArgumentBuilder<FabricClientCommandSource> commands() {
         return literal("ddlumen")
                 .then(literal("reload").executes(ctx -> {
@@ -96,6 +110,7 @@ public final class DdLumen implements ClientModInitializer {
                     ctx.getSource().sendFeedback(Texts.translatable("ddlumen.command.saturation", LumenConfig.get().colorSaturation));
                     return 1;
                 })))
+                .then(blockLightCommand())
                 .then(literal("toggle").executes(ctx -> {
                     LumenConfig.get().enabled = !LumenConfig.get().enabled;
                     LumenConfig.save();

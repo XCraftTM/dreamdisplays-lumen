@@ -58,6 +58,8 @@ public final class PostShaderLight {
     private static boolean failed;
 
     private static RenderPipeline reversedZ, forwardZ;
+    /** Shift of the scene the depth test tolerates, and room for a wider field of view (sprinting, speed). */
+    private static final float JITTER_PIXELS = 1f, FOV_MARGIN = 1.3f;
 
     private record Draw(LitSurface surface, float[] radiance, PoseStack.Pose pose) {
     }
@@ -110,7 +112,9 @@ public final class PostShaderLight {
         //#else
         BufferBuilder builder = new BufferBuilder(bytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
         //#endif
-        for (Draw draw : PENDING) LightRenderer.emit(draw.surface(), draw.radiance(), false, draw.pose(), builder);
+        // packs jitter the scene by up to about a pixel (TAA); the light has to pass the depth test on every frame
+        float slack = JITTER_PIXELS * 2f * (float) Math.tan(Math.toRadians(mc.options.fov().get() * FOV_MARGIN) / 2) / target.height;
+        for (Draw draw : PENDING) LightRenderer.emit(draw.surface(), draw.radiance(), false, draw.pose(), builder, slack);
         try (MeshData mesh = builder.build()) {
             if (mesh == null) return;
             int indexCount = mesh.drawState().indexCount();
