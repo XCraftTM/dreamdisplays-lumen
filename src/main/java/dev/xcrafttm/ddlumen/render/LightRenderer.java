@@ -229,7 +229,8 @@ public final class LightRenderer {
         //#endif
     }
 
-    private static float shown(float light) {
+    /** How bright [light] (linear) looks added to a dark surface. */
+    public static float shown(float light) {
         return Math.max(0f, (float) Math.sqrt(light) - MIN_SHOWN);
     }
 }

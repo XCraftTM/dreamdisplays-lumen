@@ -7,6 +7,9 @@ the room in the colors of its video, like a real screen or a cinema canvas. It w
   The left part of the picture lights the left part of the room, and so on.
 - **Light like a real canvas.** Each zone is an area light: light falls off with distance and angle, and blocks
   between the display and a surface cast shadows. A white picture right in front of a wall lights it fully.
+- **Players, mobs and items too.** An entity in front of a display gets the light where it stands, as bright and
+  as colored as a wall there facing the picture: its block light level rises and living entities' models take on
+  the light's color, as strongly as the display's share of all the light there.
 - **Without shaders:** the lit block faces are drawn a second time with their own texture times the incoming light,
   added on top. Surfaces keep their texture and take on the video's colors.
 - **With shaders (Iris):** shader packs render deferred, so whatever is drawn into their buffers counts as surface
@@ -59,6 +62,7 @@ when loaded; switches and the per-display settings stay.
 |---|---|---|
 | `enabled` | `true` | master switch (`/ddlumen toggle`) |
 | `coloredLight` | `true` | the colored light on surfaces |
+| `entityLight` | `true` | entities in front of a display get its light and color |
 | `intensity` | `4.0` | strength of the colored light (`/ddlumen intensity <0–16>` sets the one of the mode in use) |
 | `range` | `20` | how far in front of a display the light reaches, in blocks |
 | `zonesX`, `zonesY` | `4`, `3` | color grid taken from the picture |

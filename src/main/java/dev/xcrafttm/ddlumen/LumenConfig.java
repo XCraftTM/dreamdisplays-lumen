@@ -31,6 +31,8 @@ public final class LumenConfig {
     public boolean enabled = true;
     /** Colored light drawn onto the blocks in front of a display. */
     public boolean coloredLight = true;
+    /** Players, mobs and items in front of a display get its light too: its brightness and color where they are. */
+    public boolean entityLight = true;
     /** How strong the colored light is (1 = a white picture filling a surface's whole view lights it fully). */
     public float intensity = 4.0f;
     /** How far the light reaches in front of a display, in blocks. */

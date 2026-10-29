@@ -50,6 +50,7 @@ public final class ScreenLights {
     /** Client tick: follows the displays and starts surface rebuilds. */
     public static void tick(Minecraft mc) {
         LumenConfig.saveIfDirty();
+        EntityLight.tick();
         ClientLevel level = mc.level;
         LumenConfig cfg = LumenConfig.get();
         if (level == null || !cfg.enabled || !DreamDisplays.isAvailable()) {
@@ -95,6 +96,7 @@ public final class ScreenLights {
 
     /** Render thread, once per frame before drawing: moves every light toward its video's colors. */
     public static void frame() {
+        EntityLight.nextFrame();
         long now = System.nanoTime();
         float dt = lastFrameNs == 0 ? 0.016f : Math.min(0.25f, (now - lastFrameNs) / 1e9f);
         lastFrameNs = now;
@@ -136,6 +138,7 @@ public final class ScreenLights {
     }
 
     public static void clear() {
+        EntityLight.clear();
         LIGHTS.values().forEach(ScreenLights::remove);
         LIGHTS.clear();
         MODE.clear();

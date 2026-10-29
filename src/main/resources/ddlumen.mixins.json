@@ -8,6 +8,8 @@
     "ClientLevelMixin",
     "DisplayFrameUploaderMixin",
     "DisplayMenuMixin",
+    "EntityLightMixin",
+    "EntityTintMixin",
     "GpuFrameUploaderMixin",
     "IrisFinalPassMixin",
     "MenuLayoutAccessor",
