@@ -1,5 +1,8 @@
 package dev.xcrafttm.ddlumen.compat;
 
+// LambDynamicLights 2.x (before 1.20) has no light behavior API
+//#if MC >= 1.20
+
 import dev.lambdaurora.lambdynlights.api.DynamicLightsContext;
 import dev.lambdaurora.lambdynlights.api.DynamicLightsInitializer;
 
@@ -10,3 +13,4 @@ public final class LdlEntrypoint implements DynamicLightsInitializer {
         LdlCompat.bridge = new LdlBridge(context.dynamicLightBehaviorManager());
     }
 }
+//#endif

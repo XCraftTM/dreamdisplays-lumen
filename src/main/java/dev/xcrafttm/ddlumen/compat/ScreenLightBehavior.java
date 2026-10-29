@@ -1,5 +1,8 @@
 package dev.xcrafttm.ddlumen.compat;
 
+// LambDynamicLights 2.x (before 1.20) has no light behavior API
+//#if MC >= 1.20
+
 import dev.lambdaurora.lambdynlights.api.behavior.DynamicLightBehavior;
 import dev.xcrafttm.ddlumen.LumenConfig;
 import dev.xcrafttm.ddlumen.light.ScreenGeometry;
@@ -97,3 +100,4 @@ final class ScreenLightBehavior implements DynamicLightBehavior {
         return 0.2126f * rgb[zone * 3] + 0.7152f * rgb[zone * 3 + 1] + 0.0722f * rgb[zone * 3 + 2];
     }
 }
+//#endif

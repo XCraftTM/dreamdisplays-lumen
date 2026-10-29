@@ -51,39 +51,49 @@ def shaderEra = at('26.3') ? 'renderpearl' : at('1.21.5') ? 'pipeline' : 'legacy
 sourceSets.main.resources.srcDir "src/shaders/${shaderEra}"
 
 // LambDynamicLights ships its API nested inside the mod jar (before 26.x one level deeper, in the Fabric jar of a
-// multi-loader jar)
-configurations { lambdynamiclights { transitive = false } }
-
-def ldlApiDir = layout.buildDirectory.dir('ldl-api')
-def extractLdlApi = tasks.register('extractLdlApi') {
-    inputs.files(configurations.lambdynamiclights)
-    outputs.dir(ldlApiDir)
-    doLast {
-        def out = ldlApiDir.get().asFile
-        project.delete(out)
-        out.mkdirs()
-        def find
-        find = { byte[] jar, int depth ->
-            def nested = []
-            boolean found = false
-            new java.util.zip.ZipInputStream(new ByteArrayInputStream(jar)).withCloseable { zip ->
-                for (def e = zip.nextEntry; e != null; e = zip.nextEntry) {
-                    def name = e.name
-                    if (!name.startsWith('META-INF/jars/') || !name.endsWith('.jar')) continue
-                    def bytes = zip.readAllBytes()
-                    def file = name.substring(name.lastIndexOf('/') + 1)
-                    if (file.startsWith('lambdynamiclights-api-')) {
-                        new File(out, file).bytes = bytes
-                        found = true
-                    }
-                    if (file.startsWith('lambdynamiclights-') && !file.contains('neoforge')) nested << bytes
+// multi-loader jar). It is taken out while configuring: Loom remaps mod dependencies of obfuscated versions then,
+// before any task could run. LambDynamicLights 2.x (before 1.20) has no such API: then there is none.
+// (Fetched straight from Modrinth: resolving a configuration this early upsets Loom.)
+def ldlApiJar = {
+    def out = layout.buildDirectory.dir("ldl-api/${mc}").get().asFile
+    def existing = out.listFiles()?.find { it.name.endsWith('.jar') }
+    if (existing != null) return existing
+    if (new File(out, 'none').exists()) return null
+    def find
+    find = { byte[] jar, int depth ->
+        def nested = []
+        File found = null
+        new java.util.zip.ZipInputStream(new ByteArrayInputStream(jar)).withCloseable { zip ->
+            for (def e = zip.nextEntry; e != null; e = zip.nextEntry) {
+                def name = e.name
+                if (!name.startsWith('META-INF/jars/') || !name.endsWith('.jar')) continue
+                def bytes = zip.readAllBytes()
+                def file = name.substring(name.lastIndexOf('/') + 1)
+                if (file.startsWith('lambdynamiclights-api-')) {
+                    out.mkdirs()
+                    found = new File(out, file)
+                    found.bytes = bytes
+                } else if (file.startsWith('lambdynamiclights-') && !file.contains('neoforge')) {
+                    nested << bytes
                 }
             }
-            return found || (depth < 2 && nested.any { find(it, depth + 1) })
         }
-        if (!find(configurations.lambdynamiclights.singleFile.bytes, 0)) throw new GradleException('No LambDynamicLights API in the jar')
+        if (found != null || depth >= 2) return found
+        for (def n : nested) {
+            def f = find(n, depth + 1)
+            if (f != null) return f
+        }
+        return null
     }
-}
+    def version = new groovy.json.JsonSlurper().parse(new URL("https://api.modrinth.com/v2/version/${deps.lambdynamiclights_version}"))
+    def file = version.files.find { it.primary } ?: version.files[0]
+    def api = find(new URL(file.url).bytes, 0)
+    if (api == null) {
+        out.mkdirs()
+        new File(out, 'none').text = 'no API in this version'
+    }
+    return api
+}()
 
 dependencies {
     minecraft "com.mojang:minecraft:${mc}"
@@ -109,10 +119,10 @@ dependencies {
             localRuntime "maven.modrinth:sodium:${deps.sodium_version}"
         }
     }
-    lambdynamiclights "maven.modrinth:lambdynamiclights:${deps.lambdynamiclights_version}"
     // obfuscated versions: the API jar uses intermediary names and has to be remapped like a mod
-    def ldlApi = files(ldlApiDir.map { it.asFileTree.matching { include '*.jar' } }) { builtBy extractLdlApi }
-    if (obfuscated) modCompileOnly ldlApi else compileOnly ldlApi
+    if (ldlApiJar != null) {
+        if (obfuscated) modCompileOnly files(ldlApiJar) else compileOnly files(ldlApiJar)
+    }
 }
 
 loom {

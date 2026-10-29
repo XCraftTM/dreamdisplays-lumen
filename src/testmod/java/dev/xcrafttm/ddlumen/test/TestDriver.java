@@ -38,7 +38,21 @@ public final class TestDriver implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         ClientTickEvents.END_CLIENT_TICK.register(this::tick);
+        //#if MC < 1.20
+        // no --quickPlaySingleplayer before 1.20: open the test world from the title screen
+        net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
+            if (!(screen instanceof net.minecraft.client.gui.screens.TitleScreen) || worldOpened) return;
+            worldOpened = true;
+            //#if MC >= 1.19
+            mc.tell(() -> mc.createWorldOpenFlows().loadLevel(screen, "lumen-test"));
+            //#else
+            mc.tell(() -> mc.loadLevel("lumen-test"));
+            //#endif
+        });
+        //#endif
     }
+
+    private boolean worldOpened;
 
     private void tick(Minecraft mc) {
         if (mc.level == null || mc.player == null) return;

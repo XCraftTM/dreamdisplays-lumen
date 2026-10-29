@@ -1,5 +1,8 @@
 package dev.xcrafttm.ddlumen.compat;
 
+// LambDynamicLights 2.x (before 1.20) has no light behavior API
+//#if MC >= 1.20
+
 import dev.lambdaurora.lambdynlights.api.behavior.DynamicLightBehaviorManager;
 import dev.xcrafttm.ddlumen.light.ScreenLight;
 
@@ -32,3 +35,4 @@ final class LdlBridge {
         light.setDynamicLight(null);
     }
 }
+//#endif
