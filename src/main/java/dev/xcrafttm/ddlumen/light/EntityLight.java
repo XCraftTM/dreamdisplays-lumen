@@ -84,6 +84,28 @@ public final class EntityLight {
         return tint == null ? -1 : tint;
     }
 
+    /** The tint of the living entity being drawn now (-1: none). */
+    private static int drawing = -1;
+
+    /** A living entity starts drawing itself (body and layers) with [tint]. */
+    public static void beginTint(int tint) {
+        drawing = tint;
+    }
+
+    public static void endTint() {
+        drawing = -1;
+    }
+
+    /** [color] (ARGB) tinted like the living entity being drawn now. */
+    public static int applyTint(int color) {
+        return drawing == -1 ? color : multiply(color, drawing);
+    }
+
+    /** One channel (bit shift 16 red, 8 green, 0 blue) of that tint, 0 to 1. */
+    public static float tintChannel(int shift) {
+        return drawing == -1 ? 1f : ((drawing >> shift) & 0xFF) / 255f;
+    }
+
     /** Two ARGB colors multiplied channel by channel. */
     public static int multiply(int a, int b) {
         if (b == -1) return a;

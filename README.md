@@ -8,8 +8,9 @@ the room in the colors of its video, like a real screen or a cinema canvas. It w
 - **Light like a real canvas.** Each zone is an area light: light falls off with distance and angle, and blocks
   between the display and a surface cast shadows. A white picture right in front of a wall lights it fully.
 - **Players, mobs and items too.** An entity in front of a display gets the light where it stands, as bright and
-  as colored as a wall there facing the picture: its block light level rises and living entities' models take on
-  the light's color, as strongly as the display's share of all the light there.
+  as colored as a wall there facing the picture: its block light level rises and living entities take on the
+  light's color with everything they wear (armor, cape, elytra), as strongly as the display's share of all the light
+  there. Your own first-person hand too; held items keep their colors.
 - **Without shaders:** the lit block faces are drawn a second time with their own texture times the incoming light,
   added on top. Surfaces keep their texture and take on the video's colors.
 - **With shaders (Iris):** shader packs render deferred, so whatever is drawn into their buffers counts as surface

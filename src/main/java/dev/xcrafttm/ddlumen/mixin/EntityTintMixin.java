@@ -2,26 +2,26 @@ package dev.xcrafttm.ddlumen.mixin;
 
 import dev.xcrafttm.ddlumen.light.EntityLight;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
-import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-//#if MC >= 1.21.11
-import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-//#else
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.llamalad7.mixinextras.sugar.Local;
+import net.minecraft.world.entity.LivingEntity;
+//#if MC >= 1.21.11
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.client.model.EntityModel;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+//#if MC >= 26.1
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+//#else
+import net.minecraft.client.renderer.state.CameraRenderState;
+//#endif
 //#endif
 
 /**
- * Mobs and players in front of a display take on its light's color where they are (see {@link EntityLight}): through
- * the model tint from 1.21.11, through the color the model is drawn with before.
+ * Mobs and players in front of a display take on its light's color where they are (see {@link EntityLight}): while
+ * one is drawn, its tint is set for everything it draws, its body and its layers alike (armor, cape, elytra), see
+ * {@link ModelTintMixin}.
  */
 @Mixin(LivingEntityRenderer.class)
 public abstract class EntityTintMixin {
@@ -32,31 +32,42 @@ public abstract class EntityTintMixin {
         EntityLight.rememberTint(state, entity);
     }
 
-    @Inject(method = "getModelTint", at = @At("RETURN"), cancellable = true)
-    private void ddlumen$tint(LivingEntityRenderState state, CallbackInfoReturnable<Integer> cir) {
-        int tint = EntityLight.tintOf(state);
-        if (tint != -1) cir.setReturnValue(EntityLight.multiply(cir.getReturnValueI(), tint));
+    //#if MC >= 26.1
+    @Inject(method = "submit(Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/level/CameraRenderState;)V",
+            at = @At("HEAD"))
+    //#else
+    @Inject(method = "submit(Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/CameraRenderState;)V",
+            at = @At("HEAD"))
+    //#endif
+    private void ddlumen$beginTint(LivingEntityRenderState state, PoseStack pose, SubmitNodeCollector collector,
+                                   CameraRenderState camera, CallbackInfo ci) {
+        EntityLight.beginTint(EntityLight.tintOf(state));
     }
-    //#elif MC >= 1.21
-    @WrapOperation(method = "render(Lnet/minecraft/world/entity/LivingEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/EntityModel;renderToBuffer(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V"))
-    private void ddlumen$tint(EntityModel<?> model, PoseStack pose, VertexConsumer buffer, int light, int overlay, int color,
-                              Operation<Void> original, @Local(argsOnly = true) LivingEntity entity) {
-        original.call(model, pose, buffer, light, overlay, EntityLight.multiply(color, EntityLight.tint(entity)));
+
+    //#if MC >= 26.1
+    @Inject(method = "submit(Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/level/CameraRenderState;)V",
+            at = @At("RETURN"))
+    //#else
+    @Inject(method = "submit(Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/CameraRenderState;)V",
+            at = @At("RETURN"))
+    //#endif
+    private void ddlumen$endTint(LivingEntityRenderState state, PoseStack pose, SubmitNodeCollector collector,
+                                 CameraRenderState camera, CallbackInfo ci) {
+        EntityLight.endTint();
     }
     //#else
-    @WrapOperation(method = "render(Lnet/minecraft/world/entity/LivingEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/EntityModel;renderToBuffer(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;IIFFFF)V"))
-    private void ddlumen$tint(EntityModel<?> model, PoseStack pose, VertexConsumer buffer, int light, int overlay,
-                              float r, float g, float b, float a, Operation<Void> original,
-                              @Local(argsOnly = true) LivingEntity entity) {
-        int tint = EntityLight.tint(entity);
-        if (tint != -1) {
-            r *= ((tint >> 16) & 0xFF) / 255f;
-            g *= ((tint >> 8) & 0xFF) / 255f;
-            b *= (tint & 0xFF) / 255f;
-        }
-        original.call(model, pose, buffer, light, overlay, r, g, b, a);
+    @Inject(method = "render(Lnet/minecraft/world/entity/LivingEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
+            at = @At("HEAD"))
+    private void ddlumen$beginTint(LivingEntity entity, float yaw, float partialTick, com.mojang.blaze3d.vertex.PoseStack pose,
+                                   net.minecraft.client.renderer.MultiBufferSource buffers, int light, CallbackInfo ci) {
+        EntityLight.beginTint(EntityLight.tint(entity));
+    }
+
+    @Inject(method = "render(Lnet/minecraft/world/entity/LivingEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
+            at = @At("RETURN"))
+    private void ddlumen$endTint(LivingEntity entity, float yaw, float partialTick, com.mojang.blaze3d.vertex.PoseStack pose,
+                                 net.minecraft.client.renderer.MultiBufferSource buffers, int light, CallbackInfo ci) {
+        EntityLight.endTint();
     }
     //#endif
 }

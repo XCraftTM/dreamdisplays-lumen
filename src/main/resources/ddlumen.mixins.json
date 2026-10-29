@@ -11,9 +11,11 @@
     "EntityLightMixin",
     "EntityTintMixin",
     "GpuFrameUploaderMixin",
+    "HandTintMixin",
     "IrisFinalPassMixin",
     "MenuLayoutAccessor",
-    "MenuLayoutMixin"
+    "MenuLayoutMixin",
+    "ModelTintMixin"
   ],
   "injectors": {
     "defaultRequire": 1
