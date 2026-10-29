@@ -27,7 +27,11 @@ import java.util.concurrent.Executors;
 /** Keeps a {@link ScreenLight} for every Dream Displays display near the camera. */
 public final class ScreenLights {
     private static final Map<UUID, ScreenLight> LIGHTS = new ConcurrentHashMap<>();
-    private static final Map<UUID, Boolean> ON = new ConcurrentHashMap<>();
+    /** What a display shows: nothing, its video, or Dream Displays' loading screen. */
+    public enum Mode { OFF, VIDEO, LOADING }
+
+    private static final Map<UUID, Mode> MODE = new ConcurrentHashMap<>();
+    private static final Map<UUID, String> STATE = new ConcurrentHashMap<>();
     private static final Map<UUID, Float> BRIGHTNESS = new ConcurrentHashMap<>();
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "ddlumen-surfaces");
@@ -77,8 +81,10 @@ public final class ScreenLights {
             ScreenLight light = LIGHTS.computeIfAbsent(id, ScreenLight::new);
             light.setGeometry(geometry);
             DisplayState state = info.getState();
-            ON.put(id, state instanceof DisplayState.Playing || state instanceof DisplayState.Paused
-                    || state instanceof DisplayState.Buffering);
+            MODE.put(id, state instanceof DisplayState.Playing || state instanceof DisplayState.Paused
+                    || state instanceof DisplayState.Buffering ? Mode.VIDEO
+                    : state instanceof DisplayState.Preparing ? Mode.LOADING : Mode.OFF);
+            STATE.put(id, state.getClass().getSimpleName());
             BRIGHTNESS.put(id, info.getSettings().getBrightness());
             light.maybeRebuild(level, WORKER);
             LdlCompat.update(light);
@@ -98,10 +104,15 @@ public final class ScreenLights {
         LumenConfig cfg = LumenConfig.get();
         for (ScreenLight light : LIGHTS.values()) {
             float strength = cfg.displayLight(light.id);
-            light.setTarget(ON.getOrDefault(light.id, false) && strength > 0,
+            light.setTarget(strength > 0 ? MODE.getOrDefault(light.id, Mode.OFF) : Mode.OFF,
                     BRIGHTNESS.getOrDefault(light.id, 1f) * strength);
             light.smooth(dt);
         }
+    }
+
+    /** Dream Displays' state of the display (for /ddlumen status). */
+    public static String stateOf(UUID id) {
+        return STATE.getOrDefault(id, "-");
     }
 
     public static void onBlockChanged(BlockPos pos) {
@@ -124,7 +135,8 @@ public final class ScreenLights {
     public static void clear() {
         LIGHTS.values().forEach(ScreenLights::remove);
         LIGHTS.clear();
-        ON.clear();
+        MODE.clear();
+        STATE.clear();
         BRIGHTNESS.clear();
         FrameCapture.clear();
     }
@@ -132,7 +144,8 @@ public final class ScreenLights {
     private static void remove(ScreenLight light) {
         light.cancel();
         LdlCompat.remove(light);
-        ON.remove(light.id);
+        MODE.remove(light.id);
+        STATE.remove(light.id);
         BRIGHTNESS.remove(light.id);
     }
 

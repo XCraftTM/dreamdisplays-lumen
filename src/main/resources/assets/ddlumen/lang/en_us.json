@@ -8,5 +8,7 @@
   "ddlumen.menu.light.off": "Off",
   "ddlumen.menu.light.tooltip.title": "Room light",
   "ddlumen.menu.light.tooltip.body": "How strongly this display lights the room in the colors of its video. Only for you.",
-  "ddlumen.menu.light.tooltip.value": "Room light: %s"
+  "ddlumen.menu.light.tooltip.value": "Room light: %s",
+  "ddlumen.command.status.display": "Display %s: %s | frames %s (%s, last %s s ago), unused %s (%s) | light %s | faces %s",
+  "ddlumen.command.status.render": "Shader pack: %s | drawn last frame: %s displays, %s faces | passes after the pack: %s | other uploads: %s"
 }

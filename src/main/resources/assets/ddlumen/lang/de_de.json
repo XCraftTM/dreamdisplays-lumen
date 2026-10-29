@@ -8,5 +8,7 @@
   "ddlumen.menu.light.off": "Aus",
   "ddlumen.menu.light.tooltip.title": "Raumlicht",
   "ddlumen.menu.light.tooltip.body": "Wie stark dieses Display den Raum in den Farben seines Videos beleuchtet. Nur für dich.",
-  "ddlumen.menu.light.tooltip.value": "Raumlicht: %s"
+  "ddlumen.menu.light.tooltip.value": "Raumlicht: %s",
+  "ddlumen.command.status.display": "Display %s: %s | Bilder %s (%s, zuletzt vor %s s), unbenutzt %s (%s) | Licht %s | Flächen %s",
+  "ddlumen.command.status.render": "Shaderpack: %s | im letzten Frame gezeichnet: %s Displays, %s Flächen | Durchgänge nach dem Pack: %s | andere Uploads: %s"
 }

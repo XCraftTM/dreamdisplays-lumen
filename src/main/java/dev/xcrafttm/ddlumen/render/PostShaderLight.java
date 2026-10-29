@@ -79,6 +79,9 @@ public final class PostShaderLight {
         PENDING.add(new Draw(surface, radiance, pose));
     }
 
+    /** Passes drawn after the shader pack (for /ddlumen status). */
+    public static volatile long passes;
+
     /** Right after the shader pack's final pass. */
     public static void draw() {
         if (PENDING.isEmpty()) return;
@@ -150,10 +153,12 @@ public final class PostShaderLight {
                 pass.setVertexBuffer(0, vertices.slice());
                 pass.setIndexBuffer(indexBuffer, indices.type());
                 pass.drawIndexed(indexCount, 1, 0, 0, 0);
+                passes++;
                 //#else
                 pass.setVertexBuffer(0, vertices);
                 pass.setIndexBuffer(indexBuffer, indices.type());
                 pass.drawIndexed(0, 0, indexCount, 1);
+                passes++;
                 //#endif
             } finally {
                 RenderSystem.restoreProjectionMatrix();
@@ -172,6 +177,8 @@ public final class PostShaderLight {
 //#else
 /** Before render pipelines the light under shader packs is not drawn yet. */
 public final class PostShaderLight {
+    public static volatile long passes;
+
     private PostShaderLight() {
     }
 

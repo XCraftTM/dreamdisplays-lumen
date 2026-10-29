@@ -121,15 +121,36 @@ public final class ScreenLight {
                 && (chunkZ << 4) <= regionMax.getZ() + 1 && (chunkZ << 4) + 15 >= regionMin.getZ() - 1;
     }
 
-    /** Sets what the light should become: the latest frame times [brightness], or dark. */
-    void setTarget(boolean on, float brightness) {
-        FrameCapture.ZoneFrame frame = on ? FrameCapture.latest(id) : null;
-        if (frame == null || frame.zonesX() != zonesX || frame.zonesY() != zonesY) {
+    /**
+     * Sets what the light should become: the latest frame times [brightness]; while the video loads (or no frame
+     * arrived yet) the glow of Dream Displays' loading screen; otherwise dark.
+     */
+    void setTarget(ScreenLights.Mode mode, float brightness) {
+        FrameCapture.ZoneFrame frame = mode == ScreenLights.Mode.VIDEO ? FrameCapture.latest(id) : null;
+        if (frame != null && frame.zonesX() == zonesX && frame.zonesY() == zonesY) {
+            float[] rgb = frame.rgb();
+            for (int i = 0; i < target.length; i++) target[i] = rgb[i] * brightness;
+        } else if (mode != ScreenLights.Mode.OFF && LumenConfig.get().loadingLight > 0) {
+            loadingGlow(brightness * LumenConfig.get().loadingLight);
+        } else {
             java.util.Arrays.fill(target, 0f);
-            return;
         }
-        float[] rgb = frame.rgb();
-        for (int i = 0; i < target.length; i++) target[i] = rgb[i] * brightness;
+    }
+
+    /**
+     * Dream Displays' loading screen: a dim warm panel with a blue progress bar along the bottom. A little brighter
+     * than the panel itself (linear light), so the room does not go dark while a video starts.
+     */
+    private void loadingGlow(float strength) {
+        for (int j = 0; j < zonesY; j++) {
+            boolean bottom = j == zonesY - 1;
+            for (int i = 0; i < zonesX; i++) {
+                int k = (j * zonesX + i) * 3;
+                target[k] = (0.10f + (bottom ? 0.015f : 0f)) * strength;
+                target[k + 1] = (0.075f + (bottom ? 0.04f : 0f)) * strength;
+                target[k + 2] = (0.065f + (bottom ? 0.07f : 0f)) * strength;
+            }
+        }
     }
 
     /** Moves the shown light toward the target. */

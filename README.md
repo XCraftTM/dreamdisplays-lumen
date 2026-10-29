@@ -55,6 +55,7 @@ rows. It is stored per display and only for you, like volume and brightness (`di
 | `intensity` | `4.0` | strength of the colored light (`/ddlumen intensity <0–16>` sets the one of the mode in use) |
 | `range` | `20` | how far in front of a display the light reaches, in blocks |
 | `zonesX`, `zonesY` | `4`, `3` | color grid taken from the picture |
+| `loadingLight` | `1.0` | light while a video loads (Dream Displays' loading screen), 0 = none |
 | `smoothingMs` | `90` | how fast the light follows the video (higher is calmer) |
 | `shadows` | `true` | blocks cast shadows |
 | `maxDistance` | `96` | displays farther from the camera give no light |
@@ -67,7 +68,9 @@ rows. It is stored per display and only for you, like volume and brightness (`di
 | `displayLight` | `{}` | light strength per display id, set in the display menu |
 | `irisProgram` | `NONE` | `NONE` draws the light after the pack's final pass (recommended). An Iris program name (`TEXTURED`, ...) draws it inside the pack instead, where the pack shades it like a surface |
 
-`/ddlumen status` shows the displays nearby and their lit block faces.
+`/ddlumen status` shows, per display nearby: Dream Displays' state, the frames that reached the mod (and why any were
+not used), the current light and the lit block faces; then whether a shader pack is active and what was drawn in the
+last frame. The log notes the first frame of each display and every new reason a frame is not used.
 
 ## How it works
 

@@ -1,10 +1,12 @@
 package dev.xcrafttm.ddlumen;
 
 import com.mojang.brigadier.arguments.FloatArgumentType;
+import dev.xcrafttm.ddlumen.capture.FrameCapture;
 import dev.xcrafttm.ddlumen.compat.IrisCompat;
 import dev.xcrafttm.ddlumen.light.ScreenLight;
 import dev.xcrafttm.ddlumen.light.ScreenLights;
 import dev.xcrafttm.ddlumen.render.LightRenderer;
+import dev.xcrafttm.ddlumen.render.PostShaderLight;
 import net.fabricmc.api.ClientModInitializer;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 //#if MC >= 1.19
@@ -102,6 +104,22 @@ public final class DdLumen implements ClientModInitializer {
                         faces += light.surface().quads;
                     }
                     ctx.getSource().sendFeedback(Texts.translatable("ddlumen.command.status", displays, faces));
+                    long now = System.nanoTime();
+                    for (ScreenLight light : ScreenLights.all()) {
+                        FrameCapture.Stats st = FrameCapture.stats(light.id);
+                        float sum = 0;
+                        for (float v : light.radiance()) sum += v;
+                        ctx.getSource().sendFeedback(Texts.translatable("ddlumen.command.status.display",
+                                light.id.toString().substring(0, 8), ScreenLights.stateOf(light.id),
+                                st == null ? 0 : st.frames, st == null ? "-" : st.format,
+                                st == null || st.frames == 0 ? "-" : String.format(java.util.Locale.ROOT, "%.1f", (now - st.lastFrameNs) / 1e9),
+                                st == null ? 0 : st.skipped, st == null ? "-" : st.lastSkip,
+                                String.format(java.util.Locale.ROOT, "%.3f", sum / Math.max(1, light.radiance().length)),
+                                light.surface().quads));
+                    }
+                    ctx.getSource().sendFeedback(Texts.translatable("ddlumen.command.status.render",
+                            IrisCompat.isShaderPackInUse(), LightRenderer.lastSubmits, LightRenderer.lastFaces,
+                            PostShaderLight.passes, FrameCapture.foreignUploads()));
                     return 1;
                 }));
     }

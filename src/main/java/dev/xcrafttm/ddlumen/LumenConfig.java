@@ -31,6 +31,8 @@ public final class LumenConfig {
     /** Columns and rows of the color grid sampled from the video (a 4 x 3 grid lights the room per area). */
     public int zonesX = 4;
     public int zonesY = 3;
+    /** Light while a video loads (Dream Displays' loading screen), 0 = none, 1 = normal. */
+    public float loadingLight = 1.0f;
     /** How fast the light follows the video, in milliseconds (higher is calmer). */
     public int smoothingMs = 90;
     /** Blocks between the display and a surface cast shadows. */
@@ -123,6 +125,7 @@ public final class LumenConfig {
     private LumenConfig sanitized() {
         intensity = clamp(intensity, 0f, 16f);
         intensityWithShaders = clamp(intensityWithShaders, 0f, 16f);
+        loadingLight = clamp(loadingLight, 0f, 4f);
         range = Clamp.of(range, 2, 48);
         zonesX = Clamp.of(zonesX, 1, 8);
         zonesY = Clamp.of(zonesY, 1, 8);

@@ -1,6 +1,7 @@
 package dev.xcrafttm.ddlumen.capture;
 
 import dev.xcrafttm.ddlumen.Clamp;
+import dev.xcrafttm.ddlumen.DdLumen;
 import dev.xcrafttm.ddlumen.LumenConfig;
 
 import java.nio.ByteBuffer;
@@ -26,6 +27,16 @@ public final class FrameCapture {
     }
 
     private static final Map<UUID, ZoneFrame> FRAMES = new ConcurrentHashMap<>();
+    private static final Map<UUID, Stats> STATS = new ConcurrentHashMap<>();
+    /** Frames uploaded outside a display's upload (popouts, previews): not ours. */
+    private static long foreignUploads;
+
+    /** What arrived for one display, for /ddlumen status and the log. */
+    public static final class Stats {
+        public long frames, skipped;
+        public long lastFrameNs;
+        public String format = "-", lastSkip = "-";
+    }
     /** The display whose frame is being uploaded right now (set around Dream Displays' upload call). */
     private static UUID uploading;
 
@@ -47,17 +58,56 @@ public final class FrameCapture {
 
     public static void forget(UUID display) {
         FRAMES.remove(display);
+        STATS.remove(display);
     }
 
     public static void clear() {
         FRAMES.clear();
+        STATS.clear();
+    }
+
+    public static Stats stats(UUID display) {
+        return STATS.get(display);
+    }
+
+    public static long foreignUploads() {
+        return foreignUploads;
+    }
+
+    private static void skipped(UUID display, String reason) {
+        Stats st = STATS.computeIfAbsent(display, id -> new Stats());
+        st.skipped++;
+        if (!reason.equals(st.lastSkip)) {
+            DdLumen.LOGGER.warn("Display {}: frame not used: {}", display, reason);
+            st.lastSkip = reason;
+        }
+    }
+
+    private static void captured(UUID display, String format, ZoneFrame frame) {
+        Stats st = STATS.computeIfAbsent(display, id -> new Stats());
+        if (st.frames++ == 0 || !format.equals(st.format)) {
+            DdLumen.LOGGER.info("Display {}: frames arrive ({})", display, format);
+        }
+        st.format = format;
+        st.lastFrameNs = frame.nanoTime();
+        FRAMES.put(display, frame);
     }
 
     /** An RGB24 / RGBA32 frame, rows top to bottom. */
     public static void captureInterleaved(ByteBuffer src, int width, int height, int bytesPerPixel) {
         UUID display = uploading;
-        if (display == null || bytesPerPixel < 3 || width <= 0 || height <= 0) return;
-        if (src.capacity() < (long) width * height * bytesPerPixel) return;
+        if (display == null) {
+            foreignUploads++;
+            return;
+        }
+        if (bytesPerPixel < 3 || width <= 0 || height <= 0) {
+            skipped(display, "RGB " + width + "x" + height + ", " + bytesPerPixel + " bytes per pixel");
+            return;
+        }
+        if (src.capacity() < (long) width * height * bytesPerPixel) {
+            skipped(display, "RGB " + width + "x" + height + " but the buffer holds only " + src.capacity() + " bytes");
+            return;
+        }
         LumenConfig cfg = LumenConfig.get();
         if (!cfg.enabled) return;
         int zx = cfg.zonesX, zy = cfg.zonesY;
@@ -87,16 +137,26 @@ public final class FrameCapture {
                 rgb[k + 2] = b * n;
             }
         }
-        FRAMES.put(display, new ZoneFrame(zx, zy, rgb, System.nanoTime()));
+        captured(display, "RGB " + width + "x" + height, new ZoneFrame(zx, zy, rgb, System.nanoTime()));
     }
 
     /** An I420 frame: the Y plane, then the U and V planes at half resolution. BT.709, limited range. */
     public static void capturePlanar(ByteBuffer src, int width, int height) {
         UUID display = uploading;
-        if (display == null || width <= 0 || height <= 0) return;
+        if (display == null) {
+            foreignUploads++;
+            return;
+        }
+        if (width <= 0 || height <= 0) {
+            skipped(display, "YUV " + width + "x" + height);
+            return;
+        }
         int cw = (width + 1) / 2, ch = (height + 1) / 2;
         int uOffset = width * height, vOffset = uOffset + cw * ch;
-        if (src.capacity() < vOffset + cw * ch) return;
+        if (src.capacity() < vOffset + cw * ch) {
+            skipped(display, "YUV " + width + "x" + height + " but the buffer holds only " + src.capacity() + " bytes");
+            return;
+        }
         LumenConfig cfg = LumenConfig.get();
         if (!cfg.enabled) return;
         int zx = cfg.zonesX, zy = cfg.zonesY;
@@ -127,7 +187,7 @@ public final class FrameCapture {
                 rgb[k + 2] = b * n;
             }
         }
-        FRAMES.put(display, new ZoneFrame(zx, zy, rgb, System.nanoTime()));
+        captured(display, "YUV " + width + "x" + height, new ZoneFrame(zx, zy, rgb, System.nanoTime()));
     }
 
     private static int toByte(float c) {
