@@ -5,6 +5,11 @@
   "name": "Dream Displays Lumen",
   "description": "Dream Displays screens light up the room in the colors of their video, with and without shaders.",
   "authors": ["XCraftTM"],
+  "contact": {
+    "homepage": "https://github.com/XCraftTM/dreamdisplays-lumen",
+    "sources": "https://github.com/XCraftTM/dreamdisplays-lumen",
+    "issues": "https://github.com/XCraftTM/dreamdisplays-lumen/issues"
+  },
   "license": "All-Rights-Reserved",
   "environment": "client",
   "entrypoints": {
