@@ -104,7 +104,11 @@ public final class ScreenLights {
         LumenConfig cfg = LumenConfig.get();
         for (ScreenLight light : LIGHTS.values()) {
             float strength = cfg.displayLight(light.id);
-            light.setTarget(strength > 0 ? MODE.getOrDefault(light.id, Mode.OFF) : Mode.OFF,
+            Mode mode = MODE.getOrDefault(light.id, Mode.OFF);
+            // Dream Displays can stay "Preparing" while the video already plays (rejoining a world with a playing
+            // video): frames that keep arriving mean it plays
+            if (mode == Mode.LOADING && FrameCapture.receiving(light.id, now)) mode = Mode.VIDEO;
+            light.setTarget(strength > 0 ? mode : Mode.OFF,
                     BRIGHTNESS.getOrDefault(light.id, 1f) * strength, cfg.colorSaturation * cfg.displayColor(light.id));
             light.smooth(dt);
         }

@@ -70,6 +70,12 @@ public final class FrameCapture {
         return STATS.get(display);
     }
 
+    /** Whether frames of [display] arrived within the last half second. */
+    public static boolean receiving(UUID display, long nowNs) {
+        Stats st = STATS.get(display);
+        return st != null && st.frames > 0 && nowNs - st.lastFrameNs < 500_000_000L;
+    }
+
     public static long foreignUploads() {
         return foreignUploads;
     }
