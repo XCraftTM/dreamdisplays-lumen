@@ -15,6 +15,8 @@ the room in the colors of its video, like a real screen or a cinema canvas. It w
   [LambDynamicLights](https://modrinth.com/mod/lambdynamiclights) installed, the display also raises the block light
   in front of it while a pack is active: the pack's own lighting brightens, and entities get it too.
 
+Downloads: [GitHub releases](https://github.com/XCraftTM/dreamdisplays-lumen/releases) (one jar per Minecraft version).
+
 ## Requirements
 
 | | |
@@ -113,6 +115,10 @@ scripts/build-all.sh                           # every version into dist/
 ./gradlew runClient             # dev client with Dream Displays and LambDynamicLights
 ./gradlew runClient -Pshaders=true   # ... plus Sodium and Iris
 ```
+
+**Releases** are built by GitHub Actions (`.github/workflows/release.yml`): raise `mod_version` in
+`gradle.properties`, add `.github/release-notes/v<version>.md` and push to `main`. The workflow builds every version
+and publishes the release `v<version>` with all jars, if that release does not exist yet.
 
 `MC=<version> scripts/autotest.sh [shaders]` runs a test scene headless (Xvfb, Mesa): a dark room with an 8 × 4 display playing
 a test video (red | blue, green, white, black) and saves screenshots with and without the light to
