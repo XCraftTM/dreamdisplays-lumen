@@ -5,25 +5,27 @@ import com.dreamdisplays.api.display.model.property.DisplayFacing;
 import net.minecraft.core.BlockPos;
 
 /**
- * The emitting picture of a display: the front face of its block box, split into a grid of zones.
+ * The emitting picture of a display, split into a grid of zones. Dream Displays draws the picture at the front of
+ * the display's first block layer whatever its depth (its renderer never uses the depth), so a deeper display still
+ * lights from there, not from the front of its whole box.
  * <p>
  * {@code u} points to the picture's right and {@code v} to its top, as a viewer in front of it sees them (the same
  * axes Dream Displays uses in {@code DisplayGeometry.pose}); zone (0, 0) is the top left one, like the frame rows.
  */
 public record ScreenGeometry(
-        int minX, int minY, int minZ, int width, int height, int depth, DisplayFacing facing,
+        int minX, int minY, int minZ, int width, int height, DisplayFacing facing,
         double cx, double cy, double cz,
         int nx, int ny, int nz,
         int ux, int uy, int uz,
         int vx, int vy, int vz
 ) {
-    public static ScreenGeometry of(int minX, int minY, int minZ, int width, int height, int depth, DisplayFacing facing) {
-        // the box, as DisplayGeometry builds it
+    public static ScreenGeometry of(int minX, int minY, int minZ, int width, int height, DisplayFacing facing) {
+        // the first block layer of the box, as DisplayGeometry builds it
         int maxX = minX, maxY = minY + height - 1, maxZ = minZ;
         switch (facing) {
-            case NORTH, SOUTH -> { maxX += width - 1; maxZ += depth - 1; }
-            case EAST, WEST -> { maxZ += width - 1; maxX += depth - 1; }
-            case UP, DOWN -> { maxX += width - 1; maxZ += height - 1; maxY = minY + depth - 1; }
+            case NORTH, SOUTH -> maxX += width - 1;
+            case EAST, WEST -> maxZ += width - 1;
+            case UP, DOWN -> { maxX += width - 1; maxZ += height - 1; maxY = minY; }
         }
         double cx = (minX + maxX + 1) / 2.0, cy = (minY + maxY + 1) / 2.0, cz = (minZ + maxZ + 1) / 2.0;
         int nx = 0, ny = 0, nz = 0, ux = 0, uy = 0, uz = 0, vx = 0, vy = 1, vz = 0;
@@ -35,7 +37,7 @@ public record ScreenGeometry(
             case UP -> { ny = 1; ux = 1; vy = 0; vz = 1; cy = maxY + 1; }
             case DOWN -> { ny = -1; ux = 1; vy = 0; vz = 1; cy = minY; }
         }
-        return new ScreenGeometry(minX, minY, minZ, width, height, depth, facing, cx, cy, cz, nx, ny, nz, ux, uy, uz, vx, vy, vz);
+        return new ScreenGeometry(minX, minY, minZ, width, height, facing, cx, cy, cz, nx, ny, nz, ux, uy, uz, vx, vy, vz);
     }
 
     /** Area of the picture in square blocks. */

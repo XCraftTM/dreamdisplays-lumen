@@ -14,7 +14,6 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.Vec3;
 
-import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
@@ -40,8 +39,6 @@ public final class ScreenLights {
         return t;
     });
     private static long lastFrameNs;
-    private static Method screensGetter;
-    private static boolean screensGetterMissing;
 
     private ScreenLights() {
     }
@@ -74,7 +71,7 @@ public final class ScreenLights {
             DisplayBounds b = info.getBounds();
             UUID id = display.getId().getUuid();
             ScreenGeometry geometry = ScreenGeometry.of((int) Math.floor(b.getX()), (int) Math.floor(b.getY()),
-                    (int) Math.floor(b.getZ()), b.getWidth(), b.getHeight(), depthOf(id), b.getFacing());
+                    (int) Math.floor(b.getZ()), b.getWidth(), b.getHeight(), b.getFacing());
             double dx = geometry.cx() - camera.x, dy = geometry.cy() - camera.y, dz = geometry.cz() - camera.z;
             if (dx * dx + dy * dy + dz * dz > reach * reach) continue;
             seen.add(id);
@@ -153,33 +150,5 @@ public final class ScreenLights {
         MODE.remove(light.id);
         STATE.remove(light.id);
         BRIGHTNESS.remove(light.id);
-    }
-
-    /**
-     * How many blocks the display reaches out of the wall. The public API has no depth yet, so it is read from Dream
-     * Displays' own display list; 1 (a flat display) when that is not possible.
-     */
-    private static int depthOf(UUID id) {
-        if (screensGetterMissing) return 1;
-        try {
-            if (screensGetter == null) {
-                Class<?> registry = Class.forName("com.dreamdisplays.platform.client.displays.DisplayRegistry");
-                for (Method m : registry.getMethods()) {
-                    if (m.getName().equals("getScreens") && Map.class.isAssignableFrom(m.getReturnType())
-                            && m.getParameterCount() == 0) {
-                        screensGetter = m;
-                    }
-                }
-                if (screensGetter == null) throw new NoSuchMethodException("DisplayRegistry.getScreens");
-            }
-            Object registry = screensGetter.getDeclaringClass().getField("INSTANCE").get(null);
-            Object screen = ((Map<?, ?>) screensGetter.invoke(registry)).get(id);
-            if (screen == null) return 1;
-            return Math.max(1, (int) screen.getClass().getMethod("getDepth").invoke(screen));
-        } catch (ReflectiveOperationException | RuntimeException e) {
-            screensGetterMissing = true;
-            DdLumen.LOGGER.warn("Could not read display depths from Dream Displays, assuming flat displays: {}", e.toString());
-            return 1;
-        }
     }
 }
