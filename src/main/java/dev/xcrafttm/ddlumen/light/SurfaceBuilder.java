@@ -37,6 +37,10 @@ final class SurfaceBuilder {
     private static final double LIFT = 0.003;
     /** Corners that get less than this from all zones together are dark. */
     private static final float MIN_WEIGHT = 2e-4f;
+    /** Pieces per zone and axis close to the picture, where the zone colors blend. */
+    private static final int SUB = 4;
+    /** In zone diagonals: closer, the zones blend; further, each lights as a whole; mixed in between. */
+    private static final double BLEND_NEAR = 1.5, BLEND_FAR = 3;
 
     private SurfaceBuilder() {
     }
@@ -71,6 +75,7 @@ final class SurfaceBuilder {
         int zones = zonesX * zonesY;
         double[] centers = g.zoneCenters(zonesX, zonesY);
         double[] rects = g.zoneCorners(zonesX, zonesY);
+        Scratch scratch = new Scratch(zones);
 
         FloatArrayList positions = new FloatArrayList();
         FloatArrayList uvs = new FloatArrayList();
@@ -110,7 +115,7 @@ final class SurfaceBuilder {
                                 double[] n = normal(corner, facing);
                                 float sum = 0;
                                 for (int v = 0; v < 4; v++) {
-                                    sum += cornerWeights(s, g, centers, rects, zones, range, shadows, corner, v, n, w, v * zones);
+                                    sum += cornerWeights(s, g, centers, rects, zonesX, zonesY, range, shadows, corner, v, n, w, v * zones, scratch);
                                 }
                                 if (sum < MIN_WEIGHT) return;
 
@@ -216,15 +221,31 @@ final class SurfaceBuilder {
         return new double[]{nx, ny, nz};
     }
 
+    /** Per-corner working memory of {@link #cornerWeights}, reused. */
+    private static final class Scratch {
+        final double[] quad = new double[12];
+        final double[] light;
+        /** Shadow test per zone for the current corner: 0 not done, 1 lit, 2 in shadow. */
+        final byte[] vis;
+
+        Scratch(int zones) {
+            light = new double[zones];
+            vis = new byte[zones];
+        }
+    }
+
     /**
-     * Light corner [v] gets from each zone, written to [out] from [at]: each zone is a Lambertian rectangle, and the
-     * corner gets its form factor (the share of the corner's view the zone covers, cosine-weighted), so a white
-     * picture filling the whole view of a surface gives it 1 (its full color). Exact also right at the picture,
-     * where a zone seen as one point in its middle would light a floor in front of a standing screen hardly at all.
-     * Shadows are tested toward the zone's middle. Returns the sum.
+     * Light corner [v] gets from each zone, written to [out] from [at]: the picture is a Lambertian surface whose color
+     * blends linearly between the zones' middles (not tiles of one color each), and the corner gets the form factor
+     * of each part (the share of the corner's view it covers, cosine-weighted), so a white picture filling the whole
+     * view of a surface gives it 1 (its full color). Close to the picture each zone is cut into pieces, each shared
+     * between the zones around it, so the light right in front of the picture blends like the picture does; further
+     * away a zone lights as a whole. Shadows are tested toward the zone's middle. Returns the sum.
      */
-    private static float cornerWeights(Snapshot s, ScreenGeometry g, double[] centers, double[] rects, int zones,
-                                       int range, boolean shadows, double[] c, int v, double[] n, float[] out, int at) {
+    private static float cornerWeights(Snapshot s, ScreenGeometry g, double[] centers, double[] rects, int zonesX,
+                                       int zonesY, int range, boolean shadows, double[] c, int v, double[] n,
+                                       float[] out, int at, Scratch scratch) {
+        int zones = zonesX * zonesY;
         // nudge the corner onto the face, off its edges, so rays do not start inside the neighbors
         double qx = (c[0] + c[3] + c[6] + c[9]) * 0.25, qy = (c[1] + c[4] + c[7] + c[10]) * 0.25, qz = (c[2] + c[5] + c[8] + c[11]) * 0.25;
         double px = c[v * 3] + (qx - c[v * 3]) * 0.02 + n[0] * 0.02;
@@ -232,24 +253,85 @@ final class SurfaceBuilder {
         double pz = c[v * 3 + 2] + (qz - c[v * 3 + 2]) * 0.02 + n[2] * 0.02;
         // fade out toward the end of the range, so the light has no visible edge there
         double fade = smoothFade(g.distanceToPicture(px, py, pz), range);
+        // the picture only shines forward
+        boolean ahead = (px - g.cx()) * g.nx() + (py - g.cy()) * g.ny() + (pz - g.cz()) * g.nz() > 0;
+        double[] light = scratch.light;
+        Arrays.fill(light, 0);
+        Arrays.fill(scratch.vis, (byte) 0);
+        if (fade > 0 && ahead) {
+            double zoneW = (double) g.width() / zonesX, zoneH = (double) g.height() / zonesY;
+            double diag = Math.sqrt(zoneW * zoneW + zoneH * zoneH);
+            for (int j = 0; j < zonesY; j++) {
+                for (int i = 0; i < zonesX; i++) {
+                    int z = j * zonesX + i;
+                    double dx = px - centers[z * 3], dy = py - centers[z * 3 + 1], dz = pz - centers[z * 3 + 2];
+                    double r = Math.sqrt(dx * dx + dy * dy + dz * dz) / diag;
+                    double t = Clamp.of((r - BLEND_NEAR) / (BLEND_FAR - BLEND_NEAR), 0, 1);
+                    double whole = t * t * (3 - 2 * t);
+                    if (whole > 0) {
+                        double f = formFactor(rects, z * 12, px, py, pz, n);
+                        if (f > 1e-7 && lit(s, scratch, z, shadows, px, py, pz, centers)) light[z] += whole * f;
+                    }
+                    if (whole < 1) blended(s, g, scratch, centers, zonesX, zonesY, i, j, shadows, px, py, pz, n, 1 - whole);
+                }
+            }
+        }
         float sum = 0;
         for (int z = 0; z < zones; z++) {
-            if (fade <= 0) {
-                out[at + z] = 0;
-                continue;
-            }
-            double tx = centers[z * 3], ty = centers[z * 3 + 1], tz = centers[z * 3 + 2];
-            // the picture only shines forward
-            if ((px - g.cx()) * g.nx() + (py - g.cy()) * g.ny() + (pz - g.cz()) * g.nz() <= 0) {
-                out[at + z] = 0;
-                continue;
-            }
-            double weight = fade * formFactor(rects, z * 12, px, py, pz, n);
-            if (weight > 1e-6 && shadows && !visible(s, px, py, pz, tx, ty, tz)) weight = 0;
-            out[at + z] = (float) weight;
-            sum += (float) weight;
+            float weight = (float) (fade * light[z]);
+            out[at + z] = weight;
+            sum += weight;
         }
         return sum;
+    }
+
+    /** Zone (i, j) in SUB x SUB pieces, each piece's light shared between the zones whose middles surround it. */
+    private static void blended(Snapshot s, ScreenGeometry g, Scratch scratch, double[] centers, int zonesX, int zonesY,
+                                int i, int j, boolean shadows, double px, double py, double pz, double[] n, double share) {
+        double w = g.width(), h = g.height();
+        double s0 = ((double) i / zonesX - 0.5) * w, ds = w / zonesX / SUB;
+        double t0 = (0.5 - (double) j / zonesY) * h, dt = -h / zonesY / SUB;
+        double[] q = scratch.quad;
+        double[] light = scratch.light;
+        int own = j * zonesX + i;
+        for (int b = 0; b < SUB; b++) {
+            for (int a = 0; a < SUB; a++) {
+                double sa = s0 + a * ds, sb = sa + ds, ta = t0 + b * dt, tb = ta + dt;
+                corner(g, q, 0, sa, ta);
+                corner(g, q, 1, sb, ta);
+                corner(g, q, 2, sb, tb);
+                corner(g, q, 3, sa, tb);
+                double f = formFactor(q, 0, px, py, pz, n) * share;
+                if (f <= 1e-8 || !lit(s, scratch, own, shadows, px, py, pz, centers)) continue;
+                // the piece's middle among the zone middles: bilinear shares (the outer zones reach the picture's edge)
+                double fx = Clamp.of(((sa + sb) * 0.5 / w + 0.5) * zonesX - 0.5, 0, zonesX - 1);
+                double fy = Clamp.of((0.5 - (ta + tb) * 0.5 / h) * zonesY - 0.5, 0, zonesY - 1);
+                int x0 = Math.min((int) fx, Math.max(0, zonesX - 2)), y0 = Math.min((int) fy, Math.max(0, zonesY - 2));
+                int x1 = Math.min(x0 + 1, zonesX - 1), y1 = Math.min(y0 + 1, zonesY - 1);
+                double ax = fx - x0, ay = fy - y0;
+                light[y0 * zonesX + x0] += f * (1 - ax) * (1 - ay);
+                light[y0 * zonesX + x1] += f * ax * (1 - ay);
+                light[y1 * zonesX + x0] += f * (1 - ax) * ay;
+                light[y1 * zonesX + x1] += f * ax * ay;
+            }
+        }
+    }
+
+    private static void corner(ScreenGeometry g, double[] q, int k, double s, double t) {
+        q[k * 3] = g.cx() + g.ux() * s + g.vx() * t;
+        q[k * 3 + 1] = g.cy() + g.uy() * s + g.vy() * t;
+        q[k * 3 + 2] = g.cz() + g.uz() * s + g.vz() * t;
+    }
+
+    /** Whether zone [z]'s middle is in view of the point (tested once per corner and zone). */
+    private static boolean lit(Snapshot s, Scratch scratch, int z, boolean shadows, double px, double py, double pz,
+                               double[] centers) {
+        if (!shadows) return true;
+        if (scratch.vis[z] == 0) {
+            boolean seen = visible(s, px, py, pz, centers[z * 3], centers[z * 3 + 1], centers[z * 3 + 2]);
+            scratch.vis[z] = seen ? (byte) 1 : (byte) 2;
+        }
+        return scratch.vis[z] == 1;
     }
 
     /**

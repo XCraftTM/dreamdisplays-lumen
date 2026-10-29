@@ -199,9 +199,19 @@ public final class ScreenLight {
         ScreenGeometry g = geometry;
         int zx = zonesX, zy = zonesY;
         Object models = ModelQuads.models();
-        building = CompletableFuture.supplyAsync(
-                () -> SurfaceBuilder.build(snapshot, g, zx, zy, cfg.range, cfg.shadows, cfg.maxFaces, models), worker);
+        building = CompletableFuture.supplyAsync(() -> {
+            long start = System.nanoTime();
+            LitSurface built = SurfaceBuilder.build(snapshot, g, zx, zy, cfg.range, cfg.shadows, cfg.maxFaces, models);
+            long ms = (System.nanoTime() - start) / 1_000_000;
+            if (ms >= SLOW_BUILD_MS || Boolean.getBoolean("ddlumen.logBuilds")) {
+                dev.xcrafttm.ddlumen.DdLumen.LOGGER.info("Display {}: light of {} faces built in {} ms", id, built.quads, ms);
+            }
+            return built;
+        }, worker);
     }
+
+    /** Rebuilds that take this long are logged. */
+    private static final long SLOW_BUILD_MS = 250;
 
     void cancel() {
         if (building != null) building.cancel(false);
