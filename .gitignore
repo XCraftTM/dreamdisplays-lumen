@@ -7,3 +7,6 @@ bin/
 *.iml
 .vscode/
 dist/
+
+# private notes for continuing the work (not published)
+HANDOFF.md
