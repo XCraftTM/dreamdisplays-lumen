@@ -69,7 +69,7 @@ public final class TestDriver implements ClientModInitializer {
                 sb.append(String.format(Locale.ROOT, " [%s faces=%d lit=%s frame=%s screen=%s]", light.id, light.surface().quads,
                         light.isLit(), frame == null ? "none" : describe(frame), screen(mc) == null ? "-" : screen(mc).getClass().getSimpleName()));
             }
-            TestScene.LOG.info("fps={} submits={} drawnFaces={} lights:{}", mc.getFps(),
+            TestScene.LOG.info("fps={} submits={} drawnFaces={} lights:{}", fps(mc),
                     dev.xcrafttm.ddlumen.render.LightRenderer.lastSubmits, dev.xcrafttm.ddlumen.render.LightRenderer.lastFaces,
                     sb.length() == 0 ? " none" : sb);
         }
@@ -188,6 +188,14 @@ public final class TestDriver implements ClientModInitializer {
             shot(mc, "menu");
             doneAt = now;
         }
+    }
+
+    private static String fps(Minecraft mc) {
+        //#if MC >= 1.19
+        return String.valueOf(mc.getFps());
+        //#else
+        return mc.fpsString;
+        //#endif
     }
 
     /** The open screen, if any. */

@@ -12,6 +12,7 @@
     "lambdynlights:initializer": ["dev.xcrafttm.ddlumen.compat.LdlEntrypoint"]
   },
   "mixins": ["ddlumen.mixins.json"],
+  ${accessWidener}
   "depends": {
     "fabricloader": ">=0.19.5",
     "minecraft": "${minecraft}",

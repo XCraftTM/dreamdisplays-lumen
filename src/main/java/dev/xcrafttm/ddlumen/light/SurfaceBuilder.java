@@ -7,7 +7,11 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+//#if MC >= 1.19
 import net.minecraft.util.RandomSource;
+//#else
+import java.util.Random;
+//#endif
 //#if MC >= 1.21.2
 import net.minecraft.world.level.block.Block;
 //#else
@@ -76,7 +80,11 @@ final class SurfaceBuilder {
         LongArrayList tintPos = new LongArrayList();
         List<BlockState> tintState = new ArrayList<>();
 
+        //#if MC >= 1.19
         RandomSource random = RandomSource.create();
+        //#else
+        Random random = new Random();
+        //#endif
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         float[] w = new float[4 * zones];
         double[] corner = new double[12];

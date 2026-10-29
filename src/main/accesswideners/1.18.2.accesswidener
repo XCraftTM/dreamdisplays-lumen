@@ -1,0 +1,4 @@
+accessWidener v2 named
+# RenderType.create is private before 1.19 (later Fabric API opens it)
+accessible method net/minecraft/client/renderer/RenderType create (Ljava/lang/String;Lcom/mojang/blaze3d/vertex/VertexFormat;Lcom/mojang/blaze3d/vertex/VertexFormat$Mode;IZZLnet/minecraft/client/renderer/RenderType$CompositeState;)Lnet/minecraft/client/renderer/RenderType$CompositeRenderType;
+accessible class net/minecraft/client/renderer/RenderType$CompositeRenderType

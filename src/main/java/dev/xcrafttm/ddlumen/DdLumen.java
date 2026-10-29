@@ -6,7 +6,14 @@ import dev.xcrafttm.ddlumen.light.ScreenLight;
 import dev.xcrafttm.ddlumen.light.ScreenLights;
 import dev.xcrafttm.ddlumen.render.LightRenderer;
 import net.fabricmc.api.ClientModInitializer;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+//#if MC >= 1.19
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+//#else
+import net.fabricmc.fabric.api.client.command.v1.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v1.FabricClientCommandSource;
+//#endif
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -17,16 +24,18 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 //#else
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 //#endif
-import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 //#if MC >= 26.1
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal;
-//#else
+//#elif MC >= 1.19
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
+//#else
+import static net.fabricmc.fabric.api.client.command.v1.ClientCommandManager.argument;
+import static net.fabricmc.fabric.api.client.command.v1.ClientCommandManager.literal;
 //#endif
 
 /** Dream Displays Lumen: displays light up the room in the colors of their video. */
@@ -51,38 +60,49 @@ public final class DdLumen implements ClientModInitializer {
         ClientChunkEvents.CHUNK_LOAD.register((level, chunk) -> ScreenLights.onChunkLoaded(chunk.getPos().x, chunk.getPos().z));
         //#endif
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ScreenLights.clear());
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
-                literal("ddlumen")
-                        .then(literal("reload").executes(ctx -> {
-                            LumenConfig.load();
-                            ScreenLights.reset();
-                            ctx.getSource().sendFeedback(Component.translatable("ddlumen.command.reloaded"));
-                            return 1;
-                        }))
-                        .then(literal("intensity").then(argument("value", FloatArgumentType.floatArg(0, 16)).executes(ctx -> {
-                            // the strength of the mode in use: with or without a shader pack
-                            float value = FloatArgumentType.getFloat(ctx, "value");
-                            if (IrisCompat.isShaderPackInUse()) LumenConfig.get().intensityWithShaders = value;
-                            else LumenConfig.get().intensity = value;
-                            LumenConfig.save();
-                            ctx.getSource().sendFeedback(Component.translatable("ddlumen.command.intensity", value));
-                            return 1;
-                        })))
-                        .then(literal("toggle").executes(ctx -> {
-                            LumenConfig.get().enabled = !LumenConfig.get().enabled;
-                            LumenConfig.save();
-                            ctx.getSource().sendFeedback(Component.translatable(
-                                    LumenConfig.get().enabled ? "ddlumen.command.on" : "ddlumen.command.off"));
-                            return 1;
-                        }))
-                        .then(literal("status").executes(ctx -> {
-                            int displays = 0, faces = 0;
-                            for (ScreenLight light : ScreenLights.all()) {
-                                displays++;
-                                faces += light.surface().quads;
-                            }
-                            ctx.getSource().sendFeedback(Component.translatable("ddlumen.command.status", displays, faces));
-                            return 1;
-                        }))));
+        registerCommands();
+    }
+
+    private static void registerCommands() {
+        //#if MC >= 1.19
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(commands()));
+        //#else
+        ClientCommandManager.DISPATCHER.register(commands());
+        //#endif
+    }
+
+    private static LiteralArgumentBuilder<FabricClientCommandSource> commands() {
+        return literal("ddlumen")
+                .then(literal("reload").executes(ctx -> {
+                    LumenConfig.load();
+                    ScreenLights.reset();
+                    ctx.getSource().sendFeedback(Texts.translatable("ddlumen.command.reloaded"));
+                    return 1;
+                }))
+                .then(literal("intensity").then(argument("value", FloatArgumentType.floatArg(0, 16)).executes(ctx -> {
+                    // the strength of the mode in use: with or without a shader pack
+                    float value = FloatArgumentType.getFloat(ctx, "value");
+                    if (IrisCompat.isShaderPackInUse()) LumenConfig.get().intensityWithShaders = value;
+                    else LumenConfig.get().intensity = value;
+                    LumenConfig.save();
+                    ctx.getSource().sendFeedback(Texts.translatable("ddlumen.command.intensity", value));
+                    return 1;
+                })))
+                .then(literal("toggle").executes(ctx -> {
+                    LumenConfig.get().enabled = !LumenConfig.get().enabled;
+                    LumenConfig.save();
+                    ctx.getSource().sendFeedback(Texts.translatable(
+                            LumenConfig.get().enabled ? "ddlumen.command.on" : "ddlumen.command.off"));
+                    return 1;
+                }))
+                .then(literal("status").executes(ctx -> {
+                    int displays = 0, faces = 0;
+                    for (ScreenLight light : ScreenLights.all()) {
+                        displays++;
+                        faces += light.surface().quads;
+                    }
+                    ctx.getSource().sendFeedback(Texts.translatable("ddlumen.command.status", displays, faces));
+                    return 1;
+                }));
     }
 }

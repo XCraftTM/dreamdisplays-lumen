@@ -19,14 +19,26 @@ the room in the colors of its video, like a real screen or a cinema canvas. It w
 
 | | |
 |---|---|
-| Minecraft | 26.3 |
-| Fabric Loader | 0.19.5 or newer |
+| Minecraft | 1.18.2, 1.19.4, 1.20.1, 1.21.1, 1.21.11, 26.1.2, 26.2, 26.3 (one jar each) |
+| Loader | Fabric (or Quilt), Fabric Loader 0.19.5 or newer |
 | Fabric API | yes |
 | Dream Displays | 1.10.6 or newer (client) |
-| LambDynamicLights | optional, 4.13.0 or newer: block light (recommended with shaders) |
+| LambDynamicLights | optional, from 1.20.1 on: block light under shaders |
 | Sodium + Iris | optional |
 
 The mod is client-only: servers only need Dream Displays itself (plugin or server mod).
+
+What differs between versions:
+
+| | 26.3 | 26.1.2 – 26.2 | 1.21.11 | 1.18.2 – 1.21.1 |
+|---|---|---|---|---|
+| Colored light without shaders | yes | yes | yes | yes (no brightness above the texture's own color) |
+| Colored light with Iris | after the pack's final pass | same | same | off for now |
+| Block light (LambDynamicLights) | yes | yes | yes | 1.20.1 and 1.21.1; none before 1.20 |
+| Room light row in the display menu | yes | yes | yes | yes |
+
+Tested with the test scene (color video) on every version without shaders, and on 26.3 with Iris and
+Complementary Reimagined.
 
 ## Settings
 
@@ -77,14 +89,19 @@ rows. It is stored per display and only for you, like volume and brightness (`di
 
 ## Building
 
+One source tree for every Minecraft version, through a comment preprocessor (`//#if MC >= 1.21.11` … `//#endif`,
+see `preprocess.gradle`). `versions/<mc>.properties` pins each version's dependencies.
+
 ```bash
-./gradlew build                 # build/libs/dreamdisplays-lumen-<version>.jar
+./gradlew build                                # 26.3: build/libs/dreamdisplays-lumen-<version>+26.3.jar
+./gradlew build -Pminecraft_version=1.21.1     # another version
+scripts/build-all.sh                           # every version into dist/
 ./gradlew runClient             # dev client with Dream Displays and LambDynamicLights
 ./gradlew runClient -Pshaders=true   # ... plus Sodium and Iris
 ```
 
-`scripts/autotest.sh [shaders]` runs a test scene headless (Xvfb, Mesa): a dark room with an 8 × 4 display playing
+`MC=<version> scripts/autotest.sh [shaders]` runs a test scene headless (Xvfb, Mesa): a dark room with an 8 × 4 display playing
 a test video (red | blue, green, white, black) and saves screenshots with and without the light to
-`run/autotest/screenshots`. It needs a flat 26.3 world, the video and (for `shaders`) a shader pack zip; see the
+`run/autotest/screenshots`. It needs a flat world of that version (`scripts/makeworld.sh <version>`), the video and (for `shaders`) a shader pack zip; see the
 variables at the top of the script. `VIDEO_URL=... SEEK=<ms>` plays any video instead and takes six pairs of shots.
 Without a GPU Minecraft falls back to Vulkan (lavapipe); with `shaders` SDL is told to use EGL, which gives OpenGL.

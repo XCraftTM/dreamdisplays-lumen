@@ -1,5 +1,6 @@
 package dev.xcrafttm.ddlumen.mixin;
 
+import dev.xcrafttm.ddlumen.Texts;
 import com.dreamdisplays.libs.kotlin.Unit;
 import com.dreamdisplays.platform.client.displays.DisplayScreen;
 import com.dreamdisplays.platform.client.ui.DisplayMenu;
@@ -34,7 +35,7 @@ public abstract class DisplayMenuMixin extends UiScreenBase {
     private DisplayScreen displayScreen;
 
     private DisplayMenuMixin() {
-        super(Component.empty());
+        super(Texts.literal(""));
     }
 
     @ModifyReturnValue(method = "settingsRows", at = @At("RETURN"), require = 0)
@@ -60,10 +61,10 @@ public abstract class DisplayMenuMixin extends UiScreenBase {
         slider.setVisibleWhen(() -> !displayScreen.getErrored());
 
         SettingsSection.Row row = new SettingsSection.Row("ddlumen.menu.light", slider, reset, 0, () -> List.of(
-                Component.translatable("ddlumen.menu.light.tooltip.title").withStyle(s -> s.withColor(ChatFormatting.WHITE).withBold(true)),
-                Component.translatable("ddlumen.menu.light.tooltip.body").withStyle(ChatFormatting.GRAY),
-                Component.empty(),
-                Component.translatable("ddlumen.menu.light.tooltip.value", percent(slider.getValue()))
+                Texts.translatable("ddlumen.menu.light.tooltip.title").withStyle(s -> s.withColor(ChatFormatting.WHITE).withBold(true)),
+                Texts.translatable("ddlumen.menu.light.tooltip.body").withStyle(ChatFormatting.GRAY),
+                Texts.literal(""),
+                Texts.translatable("ddlumen.menu.light.tooltip.value", percent(slider.getValue()))
                         .withStyle(ChatFormatting.GOLD)));
 
         List<SettingsSection.Row> out = new ArrayList<>(rows);
@@ -77,6 +78,6 @@ public abstract class DisplayMenuMixin extends UiScreenBase {
 
     private static Component percent(double sliderValue) {
         int pct = (int) Math.round(sliderValue * SCALE * 100);
-        return pct == 0 ? Component.translatable("ddlumen.menu.light.off") : Component.literal(pct + "%");
+        return pct == 0 ? Texts.translatable("ddlumen.menu.light.off") : Texts.literal(pct + "%");
     }
 }

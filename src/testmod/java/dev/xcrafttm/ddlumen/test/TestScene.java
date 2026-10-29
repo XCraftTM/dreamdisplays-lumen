@@ -39,12 +39,23 @@ public final class TestScene implements ModInitializer {
     }
 
     private static void run(MinecraftServer server, String command) {
+        //#if MC >= 1.19
         server.getCommands().performPrefixedCommand(server.createCommandSourceStack()
+        //#else
+        server.getCommands().performCommand(server.createCommandSourceStack()
+        //#endif
                 .withSource(new net.minecraft.commands.CommandSource() {
+                    //#if MC >= 1.19
                     @Override
                     public void sendSystemMessage(net.minecraft.network.chat.Component message) {
                         LOG.info("/{}: {}", command, message.getString());
                     }
+                    //#else
+                    @Override
+                    public void sendMessage(net.minecraft.network.chat.Component message, java.util.UUID sender) {
+                        LOG.info("/{}: {}", command, message.getString());
+                    }
+                    //#endif
 
                     @Override
                     public boolean acceptsSuccess() {

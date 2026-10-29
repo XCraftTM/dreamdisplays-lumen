@@ -125,7 +125,11 @@ dependencies {
     }
 }
 
+// versions where the game hides what the mod needs and Fabric API does not open it
+def accessWidener = file("src/main/accesswideners/${mc}.accesswidener")
+
 loom {
+    if (accessWidener.exists()) accessWidenerPath = accessWidener
     mods {
         ddlumen { sourceSet sourceSets.main }
         ddlumen_test { sourceSet sourceSets.testmod }
@@ -147,7 +151,9 @@ loom {
 }
 
 processResources {
-    def props = [version: project.version, minecraft: "~${mc}", java: javaRelease, mixinJava: Math.min(javaRelease, 21)]
+    def props = [version: project.version, minecraft: "~${mc}", java: javaRelease, mixinJava: Math.min(javaRelease, 21),
+                 accessWidener: accessWidener.exists() ? '"accessWidener": "ddlumen.accesswidener",' : '']
+    if (accessWidener.exists()) from(accessWidener) { rename { 'ddlumen.accesswidener' } }
     inputs.properties props
     filesMatching(['fabric.mod.json', 'ddlumen.mixins.json']) { expand props }
 }

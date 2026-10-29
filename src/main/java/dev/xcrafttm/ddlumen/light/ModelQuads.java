@@ -28,7 +28,11 @@ import net.minecraft.client.resources.model.BakedModel;
 //#endif
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+//#if MC >= 1.19
 import net.minecraft.util.RandomSource;
+//#else
+import java.util.Random;
+//#endif
 import net.minecraft.world.level.block.state.BlockState;
 //#if MC >= 1.21.5
 import org.joml.Vector3fc;
@@ -68,8 +72,13 @@ final class ModelQuads {
      * Calls [sink] for each face of [state]'s model at [pos]. Faces that face a direction are only kept when
      * [culled] allows that direction (the neighbor does not hide it).
      */
+    //#if MC >= 1.19
     static void collect(Object models, BlockState state, BlockPos pos, RandomSource random, Predicate<Direction> culled,
                         Sink sink) {
+    //#else
+    static void collect(Object models, BlockState state, BlockPos pos, Random random, Predicate<Direction> culled,
+                        Sink sink) {
+    //#endif
         float[] corners = new float[12], uvs = new float[8];
         //#if MC >= 1.21.5
         random.setSeed(state.getSeed(pos));

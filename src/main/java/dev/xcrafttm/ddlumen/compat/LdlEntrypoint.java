@@ -12,5 +12,16 @@ public final class LdlEntrypoint implements DynamicLightsInitializer {
     public void onInitializeDynamicLights(DynamicLightsContext context) {
         LdlCompat.bridge = new LdlBridge(context.dynamicLightBehaviorManager());
     }
+
+    // older API versions also have a former entry method without the context (LambDynamicLights calls the one above)
+    //#if MC >= 1.21 && MC < 1.21.11
+    @Override
+    public void onInitializeDynamicLights(dev.lambdaurora.lambdynlights.api.item.ItemLightSourceManager items) {
+    }
+    //#elif MC < 1.21
+    @Override
+    public void onInitializeDynamicLights() {
+    }
+    //#endif
 }
 //#endif
